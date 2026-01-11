@@ -1,6 +1,10 @@
-def main() -> None:
-    print('API')
+from fastapi import FastAPI
+
+app = FastAPI()
 
 
-if __name__ == '__main__':
-    main()
+@app.get('/')
+def main() -> dict[str, str]:
+    return {'message': 'Okay'}
+
+

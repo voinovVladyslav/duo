@@ -1,2 +1,2 @@
 api:
-	./.venv/bin/python ./services/api/main.py
+	./.venv/bin/python -m services.api
