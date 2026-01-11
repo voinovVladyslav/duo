@@ -4,4 +4,46 @@ version = "0.1.0"
 description = "Turn based games for 2 people"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "fastapi>=0.128.0",
+    "pydantic>=2.12.5",
+    "uvicorn>=0.40.0",
+]
+
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.1",
+    "pyright>=1.1.408",
+    "ruff>=0.14.11",
+]
+
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+ignore_missing_imports = true
+
+
+[tool.ruff]
+line-length = 80
+exclude = [
+    "venv",
+    ".venv",
+    ".vscode",
+    ".pytest_cache",
+    "**/migrations/**",
+    ".mypy_cache",
+    ".ruff_cache",
+]
+
+
+[tool.ruff.lint]
+extend-select = ["E501", "I", "N", "PT", "PL", "RUF"]
+fixable = ["ALL"]
+
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+
