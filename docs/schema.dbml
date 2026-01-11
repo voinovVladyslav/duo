@@ -1,0 +1,50 @@
+table User {
+    id int [pk]
+    login str [unique]
+    password hash
+
+    created_at timestamp
+}
+
+enum GameType {
+    tictactoe
+    battleships
+}
+
+enum GameResult {
+    Player1Won
+    Player2Won
+    Draw
+}
+
+table Game {
+    id int [pk]
+
+    player1 int [ref: > User.id]
+    player2 int [ref: > User.id]
+
+    type GameType
+    result GameResult
+
+    created_at timestamp
+}
+
+table GameMove {
+    id int [pk]
+
+    game_id int [ref: > Game.id]
+
+    move_by_player int // 1 or 2, this will mean player 
+    move jsonb
+
+    created_at timestamp
+}
+
+table GameState {
+    id int [pk]
+    game_id int [ref: > Game.id]
+
+    state jsonb
+
+    created_at timestamp
+}
