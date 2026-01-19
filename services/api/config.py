@@ -36,4 +36,5 @@ class Settings(BaseDuoSettings):
 
     db: DatabaseSettings = DatabaseSettings()  # type: ignore
 
-settings = Settings() # type: ignore
+
+settings = Settings()  # type: ignore
