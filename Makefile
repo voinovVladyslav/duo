@@ -7,6 +7,11 @@ format:
 	.venv/bin/ruff format
 	.venv/bin/ruff check --fix
 
+
 api:
 	./.venv/bin/python -m services.api
+
+
+ui:
+	cd ./services/ui/; npm run dev
 
