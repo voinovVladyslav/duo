@@ -1,5 +1,5 @@
 type-check:
-	.venv/bin/pyright
+	.venv/bin/basedpyright
 	.venv/bin/mypy .
 
 
