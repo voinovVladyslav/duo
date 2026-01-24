@@ -12,6 +12,12 @@ const connectToWs = () => {
     ws.value.addEventListener('message', (event) => {
         messages.value.push(event.data)
     })
+    ws.value.addEventListener('open', (event) => {
+        console.log('connected')
+    })
+    ws.value.addEventListener('close', (event) => {
+        console.log('disconnected')
+    })
 }
 
 const disconnect = () => {
