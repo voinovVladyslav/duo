@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -16,9 +17,11 @@ def main() -> dict[str, Any]:
 async def websocket_api(websocket: WebSocket) -> None:
     await websocket.accept()
     try:
+        counter = 0
         while True:
-            data = await websocket.receive_text()
-            await websocket.send_text(f'Got: {data}')
+            await asyncio.sleep(1)
+            counter += 1
+            await websocket.send_text(str(counter))
     except WebSocketDisconnect:
         print('Disconnected')
         return None
