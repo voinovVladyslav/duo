@@ -1,3 +1,6 @@
+# PYTHONPATH_SERVICES=services/api:services/users:services/billing
+PYTHONPATH_SERVICES=services
+
 type-check:
 	.venv/bin/basedpyright
 	.venv/bin/mypy .
@@ -9,7 +12,7 @@ format:
 
 
 api:
-	./.venv/bin/python -m services.api
+	PYTHONPATH=$(PYTHONPATH_SERVICES) ./.venv/bin/python -m services.api
 
 
 ui:
