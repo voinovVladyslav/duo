@@ -2,15 +2,17 @@ from typing import Any
 
 from fastapi import FastAPI, WebSocket
 
+from api.routers.auth import router as auth_router
 from api.websockets import WebSocketsClient
 
 app = FastAPI()
+app.include_router(auth_router, prefix='/auth', tags=['auth'])
 
 
 client = WebSocketsClient()
 
 
-@app.get('/')
+@app.get('/', tags=['status'])
 def main() -> dict[str, Any]:
     return {'message': 'ok'}
 
