@@ -2,7 +2,6 @@ from typing import Any
 
 from fastapi import FastAPI, WebSocket
 
-from api.config import settings
 from api.websockets import WebSocketsClient
 
 app = FastAPI()
@@ -13,7 +12,7 @@ client = WebSocketsClient()
 
 @app.get('/')
 def main() -> dict[str, Any]:
-    return {'message': 'Okay', 'settings': settings.model_dump()}
+    return {'message': 'ok'}
 
 
 @app.websocket('/ws')
