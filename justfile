@@ -1,5 +1,3 @@
-set dotenv-load := true
-
 venv := if os_family() == "windows" { "./.venv/Scripts" } else { "./.venv/bin" }
 
 check: format type-check test
