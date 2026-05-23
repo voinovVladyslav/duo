@@ -1,0 +1,22 @@
+services:
+  api-redis:
+    image: "redis:8.6"
+    container_name: "api-redis"
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy noeviction
+
+    ports:
+      - "6379:6379"
+    volumes:
+      - api-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  api-redis:
+    name: duo-api-redis

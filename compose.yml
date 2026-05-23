@@ -1,5 +1,6 @@
 name: duo
 include:
+  - ./services/api/infra.yaml
   - ./services/auth/infra.yaml
   - ./services/game/infra.yaml
 
