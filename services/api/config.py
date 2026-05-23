@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-from pydantic import Field
+from pydantic import Field, RedisDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from common.secrets import load_public_key
@@ -27,6 +27,7 @@ class ApiSettings(BaseSettings):
     jwt_algorithm: str = 'EdDSA'
     public_key_path: Path = Field(alias='duo_api_public_key_path')
     _public_key: Ed25519PublicKey | None = None
+    redis_dsn: RedisDsn = Field(alias='duo_api_redis_dsn')
 
     @property
     def public_key(self) -> Ed25519PublicKey:
