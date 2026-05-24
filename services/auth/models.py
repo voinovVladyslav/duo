@@ -14,3 +14,4 @@ class User(TimeStampedModel, table=True):
 
     email: EmailStr = Field(max_length=200, unique=True)
     hashed_password: str = Field()
+    password_updated_at: datetime | None = Field(default=None, nullable=True)

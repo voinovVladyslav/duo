@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 
 from pydantic import EmailStr
@@ -93,6 +94,7 @@ async def user_update(
     password = fields.pop('password', '')
     if password:
         fields['hashed_password'] = hash_password(password)
+        fields['password_updated_at'] = datetime.now()
 
     user, updates = model_update(model=user, **fields)
     if not updates:

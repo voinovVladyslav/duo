@@ -106,12 +106,17 @@ class UserService(auth_pb2_grpc.UserServiceServicer):
             )
 
         assert user.id is not None
-        return User(
+        user_msg = User(
             id=user.id,
             email=user.email,
             created_at=Timestamp().FromDatetime(user.created_at),
             updated_at=Timestamp().FromDatetime(user.updated_at),
         )
+        if user.password_updated_at is not None:
+            user_msg.password_updated_at.CopyFrom(
+                datetime_to_timestamp(user.password_updated_at)
+            )
+        return user_msg
 
     @override
     async def UpdateUserPassword(
@@ -154,12 +159,17 @@ class UserService(auth_pb2_grpc.UserServiceServicer):
             )
 
         assert user.id is not None
-        return User(
+        user_msg = User(
             id=user.id,
             email=user.email,
             created_at=datetime_to_timestamp(user.created_at),
             updated_at=datetime_to_timestamp(user.updated_at),
         )
+        if user.password_updated_at is not None:
+            user_msg.password_updated_at.CopyFrom(
+                datetime_to_timestamp(user.password_updated_at)
+            )
+        return user_msg
 
     @override
     async def GetUserById(
@@ -173,9 +183,14 @@ class UserService(auth_pb2_grpc.UserServiceServicer):
             )
 
         assert user.id is not None
-        return User(
+        user_msg = User(
             id=user.id,
             email=user.email,
             created_at=datetime_to_timestamp(user.created_at),
             updated_at=datetime_to_timestamp(user.updated_at),
         )
+        if user.password_updated_at is not None:
+            user_msg.password_updated_at.CopyFrom(
+                datetime_to_timestamp(user.password_updated_at)
+            )
+        return user_msg

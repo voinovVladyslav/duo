@@ -25,6 +25,7 @@ class UserDisplay(BaseModel):
     email: EmailStr
     created_at: datetime
     updated_at: datetime
+    password_updated_at: datetime | None = None
 
 
 class UserUpdateEmailRequest(BaseModel):
