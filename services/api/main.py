@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from typing import Any
 
+import redis.asyncio as redis
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from grpc import aio
@@ -20,11 +21,13 @@ async def lifespan(app: FastAPI):
     app.state.game_channel = aio.insecure_channel(
         str(settings.game_service_url)
     )
+    app.state.cache = await redis.from_url(str(settings.redis_dsn))
 
     yield
 
     await app.state.auth_channel.close()
     await app.state.game_channel.close()
+    await app.state.cache.aclose()
 
 
 app = FastAPI(

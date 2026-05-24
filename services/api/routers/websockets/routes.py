@@ -1,9 +1,12 @@
+import asyncio
 import json
 import logging
-from typing import Any, MutableMapping
+from typing import Any, MutableMapping, cast
 
+import redis.asyncio as redis
 from fastapi import APIRouter, WebSocket
-from fastapi.websockets import WebSocketDisconnect, WebSocketState
+from fastapi.websockets import WebSocketDisconnect
+from redis.asyncio.client import PubSub
 
 from generated import game_pb2, game_pb2_grpc
 from services.api.routers.websockets.types import (
@@ -39,9 +42,6 @@ class GameLoggingAdapter(logging.LoggerAdapter[logging.Logger]):
         return f'({game} : {user}) {msg}', kwargs
 
 
-connections: dict[int, WebSocket] = {}
-
-
 def get_opponent(game: game_pb2.Game, user: int) -> int | None:
     if game.player1 == user:
         return game.player2
@@ -74,16 +74,17 @@ async def handle_authentication(
     return user
 
 
-async def _game_loop(
+async def _game_loop(  # noqa: PLR0913
     *,
     logger: GameLoggingAdapter,
-    websocket: WebSocket,
     game_service: game_pb2_grpc.GameServiceAsyncStub,
+    cache: redis.Redis,
+    websocket: WebSocket,
     user: int,
     game_id: int,
 ) -> None:
     while True:
-        logger.debug('waiting for message')
+        logger.debug('waiting for message from user')
         message = GameMessageAdapter.validate_python(
             await websocket.receive_json()
         )
@@ -112,22 +113,39 @@ async def _game_loop(
             continue
 
         game = move_response.game
-        if ws := connections.get(game.player1):
-            await ws.send_text(
-                GameStateMessage(
-                    body=GameStateMessageBody(
-                        game_state=json.loads(move_response.player1_view)
-                    )
-                ).model_dump_json()
-            )
-        if ws := connections.get(game.player2):
-            await ws.send_text(
-                GameStateMessage(
-                    body=GameStateMessageBody(
-                        game_state=json.loads(move_response.player2_view)
-                    )
-                ).model_dump_json()
-            )
+        if game.player1 == user:
+            ws_payload = move_response.player1_view
+            cache_payload = move_response.player2_view
+        else:
+            ws_payload = move_response.player2_view
+            cache_payload = move_response.player1_view
+
+        await websocket.send_text(
+            GameStateMessage(
+                body=GameStateMessageBody(game_state=json.loads(ws_payload))
+            ).model_dump_json()
+        )
+        opponent = get_opponent(game, user)
+        await cache.publish(  # pyright: ignore
+            f'game:{game_id}:{opponent}',
+            GameStateMessage(
+                body=GameStateMessageBody(game_state=json.loads(cache_payload))
+            ).model_dump_json(),
+        )
+
+
+async def _wait_for_messages(
+    *,
+    logger: GameLoggingAdapter,
+    websocket: WebSocket,
+    channel: PubSub,
+) -> None:
+    logger.debug('waiting for message for user')
+    async for message in channel.listen():  # pyright: ignore
+        if message['type'] == 'message':
+            message = cast(dict[str, Any], message)
+            logger.debug('received message for user: %s', message)
+            await websocket.send_text(message['data'].decode())
 
 
 async def _fetch_game(
@@ -143,60 +161,67 @@ async def _fetch_game(
         return None
 
 
-async def _handle_second_player_join(
+async def _handle_second_player_join(  # noqa: PLR0913
     *,
     game_service: game_pb2_grpc.GameServiceAsyncStub,
     game: game_pb2.Game,
     user: int,
+    websocket: WebSocket,
+    cache: redis.Redis,
+    logger: GameLoggingAdapter,
 ) -> game_pb2.Game:
     response = await game_service.JoinGame(
         game_pb2.JoinGameRequest(game_id=game.id, player_id=user),
     )
     game = response.game
-    await connections[game.player1].send_text(
-        GameStateMessage(
-            body=GameStateMessageBody(
-                game_state=json.loads(response.player1_view)
-            )
-        ).model_dump_json()
-    )
-    await connections[game.player2].send_text(
+    logger.debug('accepted game as user %s', user)
+    logger.debug('sending to ws for user: %s', game.player2)
+    await websocket.send_text(
         GameStateMessage(
             body=GameStateMessageBody(
                 game_state=json.loads(response.player2_view)
             )
         ).model_dump_json()
     )
+    logger.debug('publishing to redis for user: %s', game.player1)
+    await cache.publish(  # pyright: ignore
+        f'game:{game.id}:{game.player1}',
+        GameStateMessage(
+            body=GameStateMessageBody(
+                game_state=json.loads(response.player1_view)
+            )
+        ).model_dump_json(),
+    )
     return game
 
 
-async def _handle_player_reconnected(
+async def _handle_player_reconnected(  # noqa: PLR0913
     *,
     game_service: game_pb2_grpc.GameServiceAsyncStub,
     game: game_pb2.Game,
     user: int,
     logger: GameLoggingAdapter,
+    websocket: WebSocket,
+    cache: redis.Redis,
 ) -> None:
     player_view = await game_service.GetPlayerView(
         game_pb2.GetPlayerViewRequest(game_id=game.id, player_id=user)
     )
-    await connections[user].send_text(
+    await websocket.send_text(
         GameStateMessage(
             body=GameStateMessageBody(
                 game_state=json.loads(player_view.game_state)
             )
         ).model_dump_json()
     )
+    logger.debug('user reconnected')
     opponent = get_opponent(game=game, user=user)
-    if opponent and opponent in connections:
-        await connections[opponent].send_text(
-            ConnectedMessage(
-                body=ConnectedMessageBody(message=f'Opponent {user} connected'),
-            ).model_dump_json()
-        )
-        logger.debug('second player connected')
-    else:
-        logger.debug('player reconnected to empty room')
+    await cache.publish(  # pyright: ignore
+        f'game:{game.id}:{opponent}',
+        ConnectedMessage(
+            body=ConnectedMessageBody(message=f'Opponent {user} connected'),
+        ).model_dump_json(),
+    )
 
 
 @router.websocket('/games/{game_id}/')
@@ -216,6 +241,9 @@ async def play_game(
         await websocket.close()
         return
 
+    cache: redis.Redis = websocket.app.state.cache
+    channel: PubSub = cache.pubsub()  # pyright: ignore
+
     try:
         user = await handle_authentication(websocket=websocket, logger=logger)
         if not user:
@@ -223,6 +251,7 @@ async def play_game(
 
         logger.extra['user'] = user
         logger.debug('user verified')
+        await channel.subscribe(f'game:{game_id}:{user}')  # pyright: ignore
 
         is_first_player_connects = game.player1 == user and game.player2 == 0
         is_second_player_joins = game.player1 != user and game.player2 == 0
@@ -239,7 +268,6 @@ async def play_game(
             await websocket.close()
             return
 
-        connections[user] = websocket
         await websocket.send_text(
             data=AuthenticatedMessage(
                 body=AuthenticatedMessageBody(
@@ -255,21 +283,39 @@ async def play_game(
         elif is_second_player_joins:
             logger.debug('second player joins game')
             game = await _handle_second_player_join(
-                game_service=game_service, game=game, user=user
+                game_service=game_service,
+                game=game,
+                user=user,
+                websocket=websocket,
+                cache=cache,
+                logger=logger,
             )
 
         elif is_player_reconnected:
             logger.debug('second player is reconnected, can safely play a game')
             await _handle_player_reconnected(
-                game_service=game_service, game=game, user=user, logger=logger
+                game_service=game_service,
+                game=game,
+                user=user,
+                logger=logger,
+                websocket=websocket,
+                cache=cache,
             )
 
-        await _game_loop(
-            logger=logger,
-            user=user,
-            websocket=websocket,
-            game_id=game_id,
-            game_service=game_service,
+        await asyncio.gather(
+            _game_loop(
+                logger=logger,
+                user=user,
+                websocket=websocket,
+                game_id=game_id,
+                game_service=game_service,
+                cache=cache,
+            ),
+            _wait_for_messages(
+                logger=logger,
+                websocket=websocket,
+                channel=channel,
+            ),
         )
     except WebSocketDisconnect:
         logger.debug('user disconnected')
@@ -277,17 +323,13 @@ async def play_game(
         logger.exception('Unexpected exception')
     finally:
         if user:
-            connections.pop(user, None)
             opponent = get_opponent(game=game, user=user)
-            if (
-                opponent
-                and (ws := connections.get(opponent, None))
-                and ws.client_state == WebSocketState.CONNECTED
-            ):
-                await ws.send_text(
-                    data=DisconnectedMessage(
-                        body=DisconnectedMessageBody(
-                            message='Opponent disconnected'
-                        ),
-                    ).model_dump_json(),
-                )
+            await cache.publish(  # pyright: ignore
+                f'game:{game_id}:{opponent}',
+                DisconnectedMessage(
+                    body=DisconnectedMessageBody(
+                        message='Opponent disconnected'
+                    ),
+                ).model_dump_json(),
+            )
+        await channel.unsubscribe()  # pyright: ignore
