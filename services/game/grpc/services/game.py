@@ -1,3 +1,4 @@
+import json
 from typing import Any, override
 
 from grpc import StatusCode
@@ -13,7 +14,12 @@ from common.types.game import (
     Status,
 )
 from generated import game_pb2, game_pb2_grpc
-from services.game.db.crud import game_create, game_update, get_game_by_id
+from services.game.db.crud import (
+    game_create,
+    game_move_create,
+    game_update,
+    get_game_by_id,
+)
 from services.game.db.models import Game
 from services.game.engines.factory import get_game_engine_class
 from services.game.grpc.interceptors import get_current_user_id
@@ -155,6 +161,7 @@ class GameService(game_pb2_grpc.GameServiceServicer):
             else:
                 result = Result.P2_WON
 
+        current_turn = game.turn_number
         game = await game_update(
             game=game,
             state=engine.state.model_dump(),
@@ -162,6 +169,12 @@ class GameService(game_pb2_grpc.GameServiceServicer):
             status=status,
             result=result,
             turn_number=game.turn_number + 1,
+        )
+        await game_move_create(
+            game_id=request.game_id,
+            player_id=request.player_id,
+            turn_number=current_turn,
+            move_data=json.loads(request.move_data),
         )
 
         assert game.player2 is not None
