@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from dataclasses import dataclass
 from typing import Any, MutableMapping, cast
 
 import redis.asyncio as redis
@@ -42,6 +43,14 @@ class GameLoggingAdapter(logging.LoggerAdapter[logging.Logger]):
         return f'({game} : {user}) {msg}', kwargs
 
 
+@dataclass
+class _GameContext:
+    websocket: WebSocket
+    cache: redis.Redis
+    game_service: game_pb2_grpc.GameServiceAsyncStub
+    logger: GameLoggingAdapter
+
+
 def get_opponent(game: game_pb2.Game, user: int) -> int | None:
     if game.player1 == user:
         return game.player2
@@ -74,30 +83,27 @@ async def handle_authentication(
     return user
 
 
-async def _game_loop(  # noqa: PLR0913
+async def _game_loop(
     *,
-    logger: GameLoggingAdapter,
-    game_service: game_pb2_grpc.GameServiceAsyncStub,
-    cache: redis.Redis,
-    websocket: WebSocket,
+    ctx: _GameContext,
     user: int,
     game_id: int,
 ) -> None:
     while True:
-        logger.debug('waiting for message from user')
+        ctx.logger.debug('waiting for message from user')
         message = GameMessageAdapter.validate_python(
-            await websocket.receive_json()
+            await ctx.websocket.receive_json()
         )
-        logger.debug('message received: %s', message)
+        ctx.logger.debug('message received: %s', message)
         if message.type != MessageType.GAME_MOVE:
-            await websocket.send_text(
+            await ctx.websocket.send_text(
                 InvalidMoveMessage(
                     body=InvalidMoveMessageBody(message='invalid move')
                 ).model_dump_json()
             )
             continue
         try:
-            move_response = await game_service.MakeMove(
+            move_response = await ctx.game_service.MakeMove(
                 game_pb2.MakeMoveRequest(
                     game_id=game_id,
                     player_id=user,
@@ -105,7 +111,7 @@ async def _game_loop(  # noqa: PLR0913
                 )
             )
         except Exception:
-            await websocket.send_text(
+            await ctx.websocket.send_text(
                 InvalidMoveMessage(
                     body=InvalidMoveMessageBody(message='invalid move')
                 ).model_dump_json()
@@ -120,32 +126,34 @@ async def _game_loop(  # noqa: PLR0913
             ws_payload = move_response.player2_view
             cache_payload = move_response.player1_view
 
-        await websocket.send_text(
+        await ctx.websocket.send_text(
             GameStateMessage(
                 body=GameStateMessageBody(game_state=json.loads(ws_payload))
             ).model_dump_json()
         )
         opponent = get_opponent(game, user)
-        await cache.publish(  # pyright: ignore
-            f'game:{game_id}:{opponent}',
-            GameStateMessage(
-                body=GameStateMessageBody(game_state=json.loads(cache_payload))
-            ).model_dump_json(),
-        )
+        if opponent:
+            await ctx.cache.publish(  # pyright: ignore
+                f'game:{game_id}:{opponent}',
+                GameStateMessage(
+                    body=GameStateMessageBody(
+                        game_state=json.loads(cache_payload)
+                    )
+                ).model_dump_json(),
+            )
 
 
 async def _wait_for_messages(
     *,
-    logger: GameLoggingAdapter,
-    websocket: WebSocket,
+    ctx: _GameContext,
     channel: PubSub,
 ) -> None:
-    logger.debug('waiting for message for user')
+    ctx.logger.debug('waiting for message for user')
     async for message in channel.listen():  # pyright: ignore
         if message['type'] == 'message':
             message = cast(dict[str, Any], message)
-            logger.debug('received message for user: %s', message)
-            await websocket.send_text(message['data'].decode())
+            ctx.logger.debug('received message for user: %s', message)
+            await ctx.websocket.send_text(message['data'].decode())
 
 
 async def _fetch_game(
@@ -161,30 +169,27 @@ async def _fetch_game(
         return None
 
 
-async def _handle_second_player_join(  # noqa: PLR0913
+async def _handle_second_player_join(
     *,
-    game_service: game_pb2_grpc.GameServiceAsyncStub,
+    ctx: _GameContext,
     game: game_pb2.Game,
     user: int,
-    websocket: WebSocket,
-    cache: redis.Redis,
-    logger: GameLoggingAdapter,
 ) -> game_pb2.Game:
-    response = await game_service.JoinGame(
+    response = await ctx.game_service.JoinGame(
         game_pb2.JoinGameRequest(game_id=game.id, player_id=user),
     )
     game = response.game
-    logger.debug('accepted game as user %s', user)
-    logger.debug('sending to ws for user: %s', game.player2)
-    await websocket.send_text(
+    ctx.logger.debug('accepted game as user %s', user)
+    ctx.logger.debug('sending to ws for user: %s', game.player2)
+    await ctx.websocket.send_text(
         GameStateMessage(
             body=GameStateMessageBody(
                 game_state=json.loads(response.player2_view)
             )
         ).model_dump_json()
     )
-    logger.debug('publishing to redis for user: %s', game.player1)
-    await cache.publish(  # pyright: ignore
+    ctx.logger.debug('publishing to redis for user: %s', game.player1)
+    await ctx.cache.publish(  # pyright: ignore
         f'game:{game.id}:{game.player1}',
         GameStateMessage(
             body=GameStateMessageBody(
@@ -195,33 +200,31 @@ async def _handle_second_player_join(  # noqa: PLR0913
     return game
 
 
-async def _handle_player_reconnected(  # noqa: PLR0913
+async def _handle_player_reconnected(
     *,
-    game_service: game_pb2_grpc.GameServiceAsyncStub,
+    ctx: _GameContext,
     game: game_pb2.Game,
     user: int,
-    logger: GameLoggingAdapter,
-    websocket: WebSocket,
-    cache: redis.Redis,
 ) -> None:
-    player_view = await game_service.GetPlayerView(
+    player_view = await ctx.game_service.GetPlayerView(
         game_pb2.GetPlayerViewRequest(game_id=game.id, player_id=user)
     )
-    await websocket.send_text(
+    await ctx.websocket.send_text(
         GameStateMessage(
             body=GameStateMessageBody(
                 game_state=json.loads(player_view.game_state)
             )
         ).model_dump_json()
     )
-    logger.debug('user reconnected')
+    ctx.logger.debug('user reconnected')
     opponent = get_opponent(game=game, user=user)
-    await cache.publish(  # pyright: ignore
-        f'game:{game.id}:{opponent}',
-        ConnectedMessage(
-            body=ConnectedMessageBody(message=f'Opponent {user} connected'),
-        ).model_dump_json(),
-    )
+    if opponent:
+        await ctx.cache.publish(  # pyright: ignore
+            f'game:{game.id}:{opponent}',
+            ConnectedMessage(
+                body=ConnectedMessageBody(message=f'Opponent {user} connected'),
+            ).model_dump_json(),
+        )
 
 
 @router.websocket('/games/{game_id}/')
@@ -243,6 +246,12 @@ async def play_game(
 
     cache: redis.Redis = websocket.app.state.cache
     channel: PubSub = cache.pubsub()  # pyright: ignore
+    ctx = _GameContext(
+        websocket=websocket,
+        cache=cache,
+        game_service=game_service,
+        logger=logger,
+    )
 
     try:
         user = await handle_authentication(websocket=websocket, logger=logger)
@@ -283,37 +292,27 @@ async def play_game(
         elif is_second_player_joins:
             logger.debug('second player joins game')
             game = await _handle_second_player_join(
-                game_service=game_service,
+                ctx=ctx,
                 game=game,
                 user=user,
-                websocket=websocket,
-                cache=cache,
-                logger=logger,
             )
 
         elif is_player_reconnected:
             logger.debug('second player is reconnected, can safely play a game')
             await _handle_player_reconnected(
-                game_service=game_service,
+                ctx=ctx,
                 game=game,
                 user=user,
-                logger=logger,
-                websocket=websocket,
-                cache=cache,
             )
 
         await asyncio.gather(
             _game_loop(
-                logger=logger,
+                ctx=ctx,
                 user=user,
-                websocket=websocket,
                 game_id=game_id,
-                game_service=game_service,
-                cache=cache,
             ),
             _wait_for_messages(
-                logger=logger,
-                websocket=websocket,
+                ctx=ctx,
                 channel=channel,
             ),
         )
@@ -322,8 +321,7 @@ async def play_game(
     except Exception:
         logger.exception('Unexpected exception')
     finally:
-        if user:
-            opponent = get_opponent(game=game, user=user)
+        if user and (opponent := get_opponent(game=game, user=user)):
             await cache.publish(  # pyright: ignore
                 f'game:{game_id}:{opponent}',
                 DisconnectedMessage(
