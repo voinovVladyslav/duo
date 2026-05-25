@@ -21,7 +21,13 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Upgrade schema."""
     op.add_column(
-        'user', sa.Column('password_updated_at', sa.DateTime(), nullable=True)
+        'user',
+        sa.Column(
+            'password_updated_at',
+            sa.DateTime(),
+            nullable=False,
+            server_default=sa.text('NOW()'),
+        ),
     )
 
 
