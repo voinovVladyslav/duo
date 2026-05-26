@@ -106,5 +106,6 @@ jobs:
       - name: sync files
         run: |
           rsync -az \
+          --delete \
           dist/ \
           ${{ secrets.SERVER_USER }}@${{secrets.SERVER_HOST }}:/var/www/duo/
