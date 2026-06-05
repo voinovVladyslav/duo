@@ -1,0 +1,10 @@
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector:0.153.0
+    volumes:
+      - ./otel-collector-config.yml:/etc/otel/config.yml
+    command: ["--config=/etc/otel/config.yml"]
+    ports:
+        - 4317:4317 # gRPC receiver
+        - 4318:4318 # http receiver
+        - 8889:8889 # Prometheus exporter metrics
