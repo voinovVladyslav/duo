@@ -108,10 +108,13 @@ async def otel_middleware(
     start = time.perf_counter()
 
     response = await call_next(request)
+
     duration = time.perf_counter() - start
+
+    path = getattr(request.scope.get('route'), 'path') or request.url.path
     labels = {
         'method': request.method,
-        'path': request.url.path,
+        'path': path,
         'status': response.status_code,
     }
     http_requests.add(1, labels)
