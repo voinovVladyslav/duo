@@ -23,7 +23,7 @@ from services.api.routers.websockets import router as ws_router
 def setup_metrics(service_name: str, endpoint: str) -> metrics.Meter:
     exporter = OTLPMetricExporter(endpoint=endpoint, insecure=True)
     reader = PeriodicExportingMetricReader(
-        exporter=exporter, export_interval_millis=15_000
+        exporter=exporter, export_interval_millis=5_000
     )
     provider = MeterProvider(metric_readers=[reader])
     metrics.set_meter_provider(provider)
