@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any, MutableMapping, cast
 
@@ -88,7 +89,7 @@ async def _game_loop(
     ctx: _GameContext,
     user: int,
     game_id: int,
-) -> None:
+) -> bool:
     while True:
         ctx.logger.debug('waiting for message from user')
         message = GameMessageAdapter.validate_python(
@@ -141,6 +142,10 @@ async def _game_loop(
                     )
                 ).model_dump_json(),
             )
+
+        if game.status == game_pb2.FINISHED:
+            ctx.logger.debug('game finished, closing websocket loop')
+            return True
 
 
 async def _wait_for_messages(
@@ -227,12 +232,70 @@ async def _handle_player_reconnected(
         )
 
 
+def _determine_player_state(game: game_pb2.Game, user: int) -> str:
+    """Return a short tag describing player's relationship to the game.
+
+    Possible return values:
+    - 'first_connects'
+    - 'second_joins'
+    - 'reconnected'
+    - 'invalid'
+    """
+    is_first_player_connects = game.player1 == user and game.player2 == 0
+    is_second_player_joins = game.player1 != user and game.player2 == 0
+    is_player_reconnected = user in [game.player1, game.player2]
+
+    if is_first_player_connects:
+        return 'first_connects'
+    if is_second_player_joins:
+        return 'second_joins'
+    if is_player_reconnected:
+        return 'reconnected'
+    return 'invalid'
+
+
+async def _start_game_tasks(
+    *, ctx: _GameContext, user: int, game_id: int, channel: PubSub
+) -> bool:
+    """Start game loop and message listener, await first completed.
+
+    Returns True if game finished, otherwise False.
+    """
+    game_task = asyncio.create_task(
+        _game_loop(
+            ctx=ctx,
+            user=user,
+            game_id=game_id,
+        )
+    )
+    messages_task = asyncio.create_task(
+        _wait_for_messages(
+            ctx=ctx,
+            channel=channel,
+        )
+    )
+    done, pending = await asyncio.wait(
+        {game_task, messages_task}, return_when=asyncio.FIRST_COMPLETED
+    )
+    game_finished = False
+    if game_task in done:
+        game_finished = game_task.result()
+    else:
+        messages_task.result()
+
+    for task in pending:
+        task.cancel()
+    await asyncio.gather(*pending, return_exceptions=True)
+    return game_finished
+
+
 @router.websocket('/games/{game_id}/')
 async def play_game(
     websocket: WebSocket,
     game_id: int,
 ) -> None:
     user: int | None = None
+    game_finished = False
     logger = GameLoggingAdapter(logger=_logger)
     logger.extra = {'game': game_id}
 
@@ -262,17 +325,8 @@ async def play_game(
         logger.debug('user verified')
         await channel.subscribe(f'game:{game_id}:{user}')  # pyright: ignore
 
-        is_first_player_connects = game.player1 == user and game.player2 == 0
-        is_second_player_joins = game.player1 != user and game.player2 == 0
-        is_player_reconnected = user in [game.player1, game.player2]
-
-        if not any(
-            [
-                is_first_player_connects,
-                is_second_player_joins,
-                is_player_reconnected,
-            ]
-        ):
+        player_state = _determine_player_state(game=game, user=user)
+        if player_state == 'invalid':
             logger.debug('player does not belong to a game')
             await websocket.close()
             return
@@ -286,42 +340,34 @@ async def play_game(
             ).model_dump_json(),
         )
 
-        if is_first_player_connects:
+        if player_state == 'first_connects':
             logger.debug('first player connected, waiting for second player')
 
-        elif is_second_player_joins:
+        elif player_state == 'second_joins':
             logger.debug('second player joins game')
             game = await _handle_second_player_join(
-                ctx=ctx,
-                game=game,
-                user=user,
+                ctx=ctx, game=game, user=user
             )
 
-        elif is_player_reconnected:
-            logger.debug('second player is reconnected, can safely play a game')
-            await _handle_player_reconnected(
-                ctx=ctx,
-                game=game,
-                user=user,
-            )
+        elif player_state == 'reconnected':
+            logger.debug('player reconnected, restoring view')
+            await _handle_player_reconnected(ctx=ctx, game=game, user=user)
 
-        await asyncio.gather(
-            _game_loop(
-                ctx=ctx,
-                user=user,
-                game_id=game_id,
-            ),
-            _wait_for_messages(
-                ctx=ctx,
-                channel=channel,
-            ),
+        game_finished = await _start_game_tasks(
+            ctx=ctx, user=user, game_id=game_id, channel=channel
         )
+        with suppress(Exception):
+            await websocket.close()
     except WebSocketDisconnect:
         logger.debug('user disconnected')
     except Exception:
         logger.exception('Unexpected exception')
     finally:
-        if user and (opponent := get_opponent(game=game, user=user)):
+        if (
+            not game_finished
+            and user
+            and (opponent := get_opponent(game=game, user=user))
+        ):
             await cache.publish(  # pyright: ignore
                 f'game:{game_id}:{opponent}',
                 DisconnectedMessage(

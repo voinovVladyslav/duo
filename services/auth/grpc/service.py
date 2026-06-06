@@ -1,6 +1,12 @@
 import logging
 from typing import Any, override
 
+from google.protobuf.empty_pb2 import Empty
+from grpc import StatusCode
+from grpc.aio import ServicerContext
+
+from common.proto import datetime_to_timestamp
+from generated import auth_pb2_grpc
 from generated.auth_pb2 import (
     AuthResponse,
     CreateUserRequest,
@@ -10,12 +16,6 @@ from generated.auth_pb2 import (
     UpdateUserPasswordRequest,
     User,
 )
-from google.protobuf.empty_pb2 import Empty
-from grpc import StatusCode
-from grpc.aio import ServicerContext
-
-from common.proto import datetime_to_timestamp
-from generated import auth_pb2_grpc
 from services.auth.db.crud import (
     get_user_by_email,
     get_user_by_id,

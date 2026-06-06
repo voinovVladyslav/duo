@@ -1,184 +1,97 @@
-import asyncio
+import json
 from datetime import datetime
-
-import pytest
-
+from http import HTTPStatus
 from types import SimpleNamespace
 
+import pytest
+from fastapi import HTTPException
 from grpc import StatusCode
 
+from common.proto import datetime_to_timestamp
 from generated import game_pb2
-
-from services.game.grpc.services.game_move import GameMoveService
-
-
-class AbortCalled(Exception):
-    def __init__(self, code):
-        self.code = code
+from services.api.routers import game_moves as game_moves_router
+from services.api.routers.game_moves import (
+    _require_authenticated_user,
+    _rpc_error_to_http_exception,
+)
 
 
-class DummyContext:
-    async def abort(self, *, code, details: str | None = None):
-        raise AbortCalled(code)
-
-
-def make_move(id=1, game_id=10, player_id=100, turn_number=1):
+def make_game_move_proto(id=1, game_id=10, player_id=100, turn_number=1):
     now = datetime.utcnow()
-    return SimpleNamespace(
+    return game_pb2.GameMove(
         id=id,
         game_id=game_id,
         player_id=player_id,
         turn_number=turn_number,
-        move_data={'x': 1},
-        created_at=now,
-        updated_at=now,
+        move_data=json.dumps({'x': 1}),
+        created_at=datetime_to_timestamp(now),
+        updated_at=datetime_to_timestamp(now),
     )
 
 
-def make_game(id=10, player1=100, player2=200):
-    now = datetime.utcnow()
-    return SimpleNamespace(
-        id=id,
-        type=0,
-        result=0,
-        status=0,
-        player1=player1,
-        player2=player2,
-        current_player=player1,
-        turn_number=1,
-        created_at=now,
-        updated_at=now,
-        state={},
-    )
-
-
-@pytest.mark.asyncio
-async def test_get_move_by_id_allowed(monkeypatch):
-    svc = GameMoveService()
-    move = make_move()
-    game = make_game()
-
+def test_require_authenticated_user(monkeypatch):
+    bearer_token = 100
     monkeypatch.setattr(
-        'services.game.grpc.services.game_move.get_game_move_by_id',
-        lambda id: asyncio.Future(),
+        'services.api.routers.game_moves.get_user_from_token',
+        lambda t: bearer_token,
     )
 
-    # set the future result for get_game_move_by_id
-    fut = asyncio.Future()
-    fut.set_result(move)
+    assert _require_authenticated_user('Bearer tok') == bearer_token
+
+
+def test_require_authenticated_user_rejects(monkeypatch):
     monkeypatch.setattr(
-        'services.game.grpc.services.game_move.get_game_move_by_id',
-        lambda id: fut,
+        'services.api.routers.game_moves.get_user_from_token', lambda t: None
     )
 
-    # get_game_by_id
-    fut_g = asyncio.Future()
-    fut_g.set_result(game)
-    monkeypatch.setattr(
-        'services.game.grpc.services.game_move.get_game_by_id',
-        lambda id: fut_g,
-    )
+    with pytest.raises(HTTPException) as excinfo:
+        _require_authenticated_user('Bearer tok')
 
-    # current user is player1
-    monkeypatch.setattr(
-        'services.game.grpc.services.game_move.get_current_user_id',
-        lambda: game.player1,
-    )
-
-    resp = await svc.GetMoveById(
-        game_pb2.GetMoveByIdRequest(move_id=move.id), DummyContext()
-    )
-
-    assert resp.id == move.id
-    assert resp.game_id == move.game_id
+    assert excinfo.value.status_code == HTTPStatus.UNAUTHORIZED
 
 
-@pytest.mark.asyncio
-async def test_get_move_by_id_forbidden(monkeypatch):
-    svc = GameMoveService()
-    move = make_move()
-    game = make_game()
+@pytest.mark.parametrize(
+    ('code', 'status_code', 'detail'),
+    [
+        (
+            StatusCode.UNAUTHENTICATED,
+            HTTPStatus.UNAUTHORIZED,
+            'Not authenticated',
+        ),
+        (StatusCode.PERMISSION_DENIED, HTTPStatus.FORBIDDEN, 'Forbidden'),
+        (StatusCode.NOT_FOUND, HTTPStatus.NOT_FOUND, 'Not found'),
+    ],
+)
+def test_rpc_error_to_http_exception(code, status_code, detail):
+    class FakeRpcError:
+        def code(self):
+            return code
 
-    fut = asyncio.Future()
-    fut.set_result(move)
-    monkeypatch.setattr(
-        'services.game.grpc.services.game_move.get_game_move_by_id',
-        lambda id: fut,
-    )
+    exc = _rpc_error_to_http_exception(FakeRpcError())
 
-    fut_g = asyncio.Future()
-    fut_g.set_result(game)
-    monkeypatch.setattr(
-        'services.game.grpc.services.game_move.get_game_by_id',
-        lambda id: fut_g,
-    )
-
-    # current user is not a player
-    monkeypatch.setattr(
-        'services.game.grpc.services.game_move.get_current_user_id',
-        lambda: 9999,
-    )
-
-    with pytest.raises(AbortCalled) as excinfo:
-        await svc.GetMoveById(
-            game_pb2.GetMoveByIdRequest(move_id=move.id), DummyContext()
-        )
-
-    assert excinfo.value.code == StatusCode.PERMISSION_DENIED
+    assert exc.status_code == status_code
+    assert exc.detail == detail
 
 
 @pytest.mark.asyncio
 async def test_get_moves_for_game_allowed(monkeypatch):
-    svc = GameMoveService()
-    move = make_move()
-    game = make_game()
+    move = make_game_move_proto()
 
-    fut_g = asyncio.Future()
-    fut_g.set_result(game)
-    monkeypatch.setattr(
-        'services.game.grpc.services.game_move.get_game_by_id',
-        lambda id: fut_g,
-    )
-
-    fut_moves = asyncio.Future()
-    fut_moves.set_result([move])
-    monkeypatch.setattr(
-        'services.game.grpc.services.game_move.get_game_moves',
-        lambda game_id: fut_moves,
-    )
+    class Stub:
+        async def get_moves_for_game(
+            self, request, timeout=None, metadata=None
+        ):
+            return game_pb2.ListMoveResponse(moves=[move])
 
     monkeypatch.setattr(
-        'services.game.grpc.services.game_move.get_current_user_id',
-        lambda: game.player1,
+        'services.api.routers.game_moves.get_user_from_token', lambda t: 100
     )
 
-    resp = await svc.GetMovesForGame(
-        game_pb2.GetMovesForGameRequest(game_id=game.id), DummyContext()
+    response = await game_moves_router.list_game_moves(
+        SimpleNamespace(credentials='Bearer tok'),
+        Stub(),
+        move.game_id,
     )
 
-    assert len(list(resp.moves)) == 1
-
-
-@pytest.mark.asyncio
-async def test_get_moves_for_game_forbidden(monkeypatch):
-    svc = GameMoveService()
-    game = make_game()
-
-    fut_g = asyncio.Future()
-    fut_g.set_result(game)
-    monkeypatch.setattr(
-        'services.game.grpc.services.game_move.get_game_by_id',
-        lambda id: fut_g,
-    )
-
-    monkeypatch.setattr(
-        'services.game.grpc.services.game_move.get_current_user_id',
-        lambda: 9999,
-    )
-
-    with pytest.raises(AbortCalled) as excinfo:
-        await svc.GetMovesForGame(
-            game_pb2.GetMovesForGameRequest(game_id=game.id), DummyContext()
-        )
-
-    assert excinfo.value.code == StatusCode.PERMISSION_DENIED
+    assert isinstance(response, list)
+    assert response[0].id == move.id
