@@ -1,7 +1,5 @@
 import time
-from typing import Awaitable, Callable
 
-from fastapi import Request, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from common.metrics import setup_metrics
@@ -15,6 +13,13 @@ http_latency = meter.create_histogram(
     description='HTTP request duration in ms',
     unit='ms',
 )
+
+
+def get_route(scope: Scope) -> str:
+    path: str | None = getattr(scope.get('route'), 'path', None)
+    if path is not None:
+        return scope.get('root_path', '') + path
+    return scope.get('path', 'unknown')
 
 
 class OTELMiddleware:
@@ -33,18 +38,18 @@ class OTELMiddleware:
             return
 
         status_code: int = 500
+
         async def patched_send(message: Message) -> None:
             nonlocal status_code
-            status_code = message.get('status', 500)
+            if message.get('type') == 'http.response.start':
+                status_code = message.get('status', 500)
             await send(message)
 
         start = time.perf_counter()
         await self.app(scope, receive, patched_send)
         duration = (time.perf_counter() - start) * 1_000
 
-        path = getattr(scope.get('route'), 'path', None) or scope.get(
-            'path', 'unknown'
-        )
+        path = get_route(scope)
         labels = {
             'method': scope.get('method', ''),
             'path': path,
@@ -52,5 +57,3 @@ class OTELMiddleware:
         }
         http_requests.add(1, labels)
         http_latency.record(duration, labels)
-
-
