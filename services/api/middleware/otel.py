@@ -6,12 +6,18 @@ from common.metrics import setup_metrics
 
 meter = setup_metrics('duo.api', 'localhost:4317')
 http_requests = meter.create_counter(
-    'http.server.request.count', description='Total HTTP requests'
+    'http.server.request.count',
+    description='Total HTTP requests',
 )
 http_latency = meter.create_histogram(
-    'http.servier.request.duration',
-    description='HTTP request duration in ms',
+    'http.server.request.duration',
     unit='ms',
+    description='HTTP request duration in ms',
+)
+http_active_connections = meter.create_up_down_counter(
+    'http.server.active_connections',
+    unit='1',
+    description='HTTP requests currently performed',
 )
 
 
@@ -45,15 +51,20 @@ class OTELMiddleware:
                 status_code = message.get('status', 500)
             await send(message)
 
-        start = time.perf_counter()
-        await self.app(scope, receive, patched_send)
-        duration = (time.perf_counter() - start) * 1_000
-
-        path = get_route(scope)
         labels = {
             'method': scope.get('method', ''),
-            'path': path,
-            'status': status_code,
         }
+        http_active_connections.add(1, labels)
+        start = time.perf_counter()
+
+        await self.app(scope, receive, patched_send)
+
+        duration = (time.perf_counter() - start) * 1_000
+        http_active_connections.add(-1, labels)
+
+        path = get_route(scope)
+        labels['path'] = path
+        labels['status'] = status_code
+
         http_requests.add(1, labels)
         http_latency.record(duration, labels)

@@ -78,5 +78,5 @@ app.include_router(ws_router, prefix='/ws')
 
 
 @app.get('/', tags=['status'])
-def main() -> dict[str, Any]:
+async def main() -> dict[str, Any]:
     return {'status': 'ok'}

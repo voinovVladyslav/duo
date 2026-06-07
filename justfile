@@ -74,3 +74,7 @@ connect-to-db APP:
 clean:
     find . -type d -name __pycache__ -exec rm -rf {} +
     find . -name "*.pyc" -delete
+
+
+ab:
+    ab -n 100 -c 10 -m GET http://localhost:8000/api/v1/
