@@ -6,7 +6,7 @@ from grpc import aio
 
 from generated import game_pb2_grpc
 from services.game.config import settings
-from services.game.configs.sentry import init_sentry
+from services.game.config.sentry import init_sentry
 from services.game.grpc.interceptors import AuthInterceptor
 from services.game.grpc.services.game import GameService
 from services.game.grpc.services.game_move import GameMoveService

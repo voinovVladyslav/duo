@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from grpc import aio
 
 from services.api.config import settings
-from services.api.configs.sentry import init_sentry
+from services.api.config.sentry import init_sentry
 from services.api.middleware.otel import OTELMiddleware
 from services.api.routers.auth import router as auth_router
 from services.api.routers.games import router as games_router

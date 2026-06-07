@@ -13,7 +13,7 @@ from common.secrets import load_private_key, load_public_key
 
 logger = logging.getLogger('duo.auth.config')
 
-BASE_PATH = Path(__file__).parent
+BASE_PATH = Path(__file__).parent.parent
 
 
 class AuthSettings(BaseSettings):

@@ -10,7 +10,7 @@ from common.secrets import load_public_key
 
 logger = logging.getLogger('duo.api.config')
 
-BASE_PATH = Path(__file__).parent
+BASE_PATH = Path(__file__).parent.parent
 
 
 class ApiSettings(BaseSettings):
