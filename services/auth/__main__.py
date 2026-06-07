@@ -7,7 +7,7 @@ from grpc import aio
 from generated import auth_pb2_grpc
 from services.auth.config import settings
 from services.auth.config.sentry import init_sentry
-from services.auth.grpc.interceptors import AuthInterceptor
+from services.auth.grpc.interceptors import AuthInterceptor, OTELInterceptor
 from services.auth.grpc.service import UserService
 
 logger = logging.getLogger('duo.auth')
@@ -17,7 +17,10 @@ if settings.sentry_dsn:
 
 
 async def serve() -> None:
-    interceptors = (AuthInterceptor(),)
+    interceptors = (
+        OTELInterceptor(),
+        AuthInterceptor(),
+    )
     server = aio.server(interceptors=interceptors)
     auth_pb2_grpc.add_UserServiceServicer_to_server(UserService(), server)
 
