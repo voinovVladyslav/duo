@@ -7,7 +7,7 @@ from grpc import aio
 from generated import game_pb2_grpc
 from services.game.config import settings
 from services.game.config.sentry import init_sentry
-from services.game.grpc.interceptors import AuthInterceptor
+from services.game.grpc.interceptors import AuthInterceptor, OTELInterceptor
 from services.game.grpc.services.game import GameService
 from services.game.grpc.services.game_move import GameMoveService
 
@@ -18,7 +18,10 @@ if settings.sentry_dsn:
 
 
 async def serve() -> None:
-    interceptors = (AuthInterceptor(),)
+    interceptors = (
+        OTELInterceptor(),
+        AuthInterceptor(),
+    )
     server = aio.server(interceptors=interceptors)
     game_pb2_grpc.add_GameServiceServicer_to_server(GameService(), server)
     game_pb2_grpc.add_GameMoveServiceServicer_to_server(
