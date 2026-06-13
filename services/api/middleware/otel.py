@@ -128,12 +128,16 @@ class OTELMiddleware:
 
         async def patched_receive():
             result = await receive()
-            ws_messages_received.add(1, {**labels, 'direction': 'in'})
+            size = len(str(result).encode())
+            ws_message_size.record(size, {**labels, 'direction': 'in'})
+            ws_messages_received.add(1, labels)
             return result
 
         async def patched_send(message: Message):
+            size = len(str(message).encode())
+            ws_message_size.record(size, {**labels, 'direction': 'out'})
             await send(message)
-            ws_messages_sent.add(1, {**labels, 'direction': 'out'})
+            ws_messages_sent.add(1, labels)
 
         start = time.perf_counter()
         await self.app(scope, patched_receive, patched_send)
