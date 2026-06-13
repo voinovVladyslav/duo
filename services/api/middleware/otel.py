@@ -60,9 +60,11 @@ class OTELMiddleware:
         self, scope: Scope, receive: Receive, send: Send
     ) -> None:
         if scope['type'] != 'http':
-            await self.app(scope, receive, send)
+            await self._handle_ws(scope, receive, send)
             return
+        await self._handle_http(scope, receive, send)
 
+    async def _handle_http(self, scope: Scope, receive: Receive, send: Send):
         status_code: int = 500
         response_size_bytes: int = 0
 
@@ -104,3 +106,6 @@ class OTELMiddleware:
         http_response_size_bytes.record(response_size_bytes, labels)
         http_requests.add(1, labels)
         http_latency.record(duration, labels)
+
+    async def _handle_ws(self, scope: Scope, receive: Receive, send: Send):
+        await self.app(scope, receive, send)
