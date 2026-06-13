@@ -14,13 +14,13 @@ http_latency = meter.create_histogram(
     unit='ms',
     description='HTTP request duration in ms',
 )
-http_request_size_bytes = meter.create_histogram(
-    'http.server.request.size_bytes',
+http_request_size = meter.create_histogram(
+    'http.server.request.size',
     unit='by',
     description='HTTP request size in bytes',
 )
-http_response_size_bytes = meter.create_histogram(
-    'http.server.response.size_bytes',
+http_response_size = meter.create_histogram(
+    'http.server.response.size',
     unit='by',
     description='HTTP response size in bytes',
 )
@@ -101,9 +101,9 @@ class OTELMiddleware:
             scope.get('headers', []),
         )
         if val:
-            http_request_size_bytes.record(int(val), labels)
+            http_request_size.record(int(val), labels)
 
-        http_response_size_bytes.record(response_size_bytes, labels)
+        http_response_size.record(response_size_bytes, labels)
         http_requests.add(1, labels)
         http_latency.record(duration, labels)
 
