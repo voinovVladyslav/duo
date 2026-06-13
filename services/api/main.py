@@ -8,6 +8,7 @@ from grpc import aio
 
 from services.api.config import settings
 from services.api.config.sentry import init_sentry
+from services.api.middleware.grpc_otel import OTELClientInterceptor
 from services.api.middleware.otel import OTELMiddleware
 from services.api.routers.auth import router as auth_router
 from services.api.routers.games import router as games_router
@@ -21,10 +22,12 @@ if settings.sentry_dsn:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.auth_channel = aio.insecure_channel(
-        str(settings.auth_service_url)
+        str(settings.auth_service_url),
+        interceptors=[OTELClientInterceptor()],
     )
     app.state.game_channel = aio.insecure_channel(
-        str(settings.game_service_url)
+        str(settings.game_service_url),
+        interceptors=[OTELClientInterceptor()],
     )
     app.state.cache = await redis.from_url(str(settings.redis_dsn))
 
