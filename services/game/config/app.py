@@ -37,6 +37,9 @@ class GameSettings(BaseSettings):
 
     sentry_dsn: str = Field(alias='duo_game_sentry_dsn', default='')
 
+    service_name: str = 'duo.game'
+    otel_url: str = Field(alias='duo_game_otel_url')
+
     @property
     def db_dsn(self) -> PostgresDsn:
         dsn = PostgresDsn.build(
