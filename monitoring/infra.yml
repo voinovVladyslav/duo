@@ -24,8 +24,8 @@ services:
     image: grafana/grafana:11.6.15
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
     ports:
       - "3001:3000"
     environment:
