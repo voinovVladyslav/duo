@@ -39,6 +39,7 @@ class GameSettings(BaseSettings):
 
     service_name: str = 'duo.game'
     otel_url: str = Field(alias='duo_game_otel_url')
+    otel_interval: int = Field(alias='duo_game_otel_interval', default=30_000)
 
     @property
     def db_dsn(self) -> PostgresDsn:

@@ -14,7 +14,9 @@ from services.auth.exceptions import UnsupportedGRPCMethodError
 
 request_user: ContextVar[User | None] = ContextVar('request_user', default=None)
 
-meter = setup_metrics(settings.service_name, settings.otel_url)
+meter = setup_metrics(
+    settings.service_name, settings.otel_url, settings.otel_interval
+)
 grpc_requests = meter.create_counter(
     'grpc.server.request.count',
     description='Total gRPC calls',

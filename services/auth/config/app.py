@@ -47,6 +47,7 @@ class AuthSettings(BaseSettings):
 
     service_name: str = 'duo.auth'
     otel_url: str = Field(alias='duo_auth_otel_url')
+    otel_interval: int = Field(alias='duo_auth_otel_interval', default=30_000)
 
     @property
     def db_dsn(self) -> PostgresDsn:

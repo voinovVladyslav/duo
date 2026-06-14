@@ -32,6 +32,7 @@ class ApiSettings(BaseSettings):
 
     service_name: str = 'duo.api'
     otel_url: str = Field(alias='duo_api_otel_url')
+    otel_interval: int = Field(alias='duo_api_otel_interval', default=30_000)
 
     @property
     def public_key(self) -> Ed25519PublicKey:
