@@ -12,8 +12,9 @@ from starlette.routing import Match
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from common.metrics import setup_metrics
+from services.api.config import settings
 
-meter = setup_metrics('duo.api', 'localhost:4317')
+meter = setup_metrics(settings.service_name, settings.otel_url)
 
 http_requests = meter.create_counter('http.server.request.count')
 http_latency = meter.create_histogram('http.server.request.duration', unit='ms')

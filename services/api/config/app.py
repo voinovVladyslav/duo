@@ -30,6 +30,9 @@ class ApiSettings(BaseSettings):
     redis_dsn: RedisDsn = Field(alias='duo_api_redis_dsn')
     sentry_dsn: str = Field(alias='duo_api_sentry_dsn', default='')
 
+    service_name: str = 'duo.api'
+    otel_url: str = Field(alias='duo_api_otel_url')
+
     @property
     def public_key(self) -> Ed25519PublicKey:
         assert self._public_key is not None, 'Public key is not loaded properly'
