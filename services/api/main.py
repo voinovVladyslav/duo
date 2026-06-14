@@ -8,8 +8,7 @@ from grpc import aio
 
 from services.api.config import settings
 from services.api.config.sentry import init_sentry
-from services.api.middleware.grpc_otel import OTELClientInterceptor
-from services.api.middleware.otel import OTELMiddleware
+from services.api.middleware.otel import OTELClientInterceptor, OTELMiddleware
 from services.api.routers.auth import router as auth_router
 from services.api.routers.games import router as games_router
 from services.api.routers.users import router as users_router
