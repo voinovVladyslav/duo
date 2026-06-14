@@ -7,8 +7,6 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 exporters:
-  debug:
-    verbosity: detailed
   prometheus:
     endpoint: 0.0.0.0:8889
 
@@ -18,7 +16,7 @@ processors:
 service:
   telemetry:
     metrics:
-      level: detailed
+      level: normal
       readers:
         - pull:
             exporter:
@@ -30,5 +28,5 @@ service:
     metrics:
       receivers: [otlp]
       processors: [batch]
-      exporters: [debug, prometheus]
+      exporters: [prometheus]
 
