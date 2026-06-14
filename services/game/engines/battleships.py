@@ -46,7 +46,15 @@ class State(BaseModel):
 
 
 class PlayerView(BaseModel):
-    pass
+    your_turn: bool
+    your_grid: Grid
+    opponent_grid: Grid
+    winner: int | None
+    is_draw: bool
+
+
+def make_empty_grid() -> Grid:
+    return [[Cell.EMPTY for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
 
 
 class Battleships(GameEngine[State, Move, PlayerView]):
@@ -75,7 +83,13 @@ class Battleships(GameEngine[State, Move, PlayerView]):
         return None
 
     def get_player_view(self, player_id: int) -> PlayerView:
-        return PlayerView()
+        return PlayerView(
+            your_turn=False,
+            your_grid=[],
+            opponent_grid=[],
+            winner=None,
+            is_draw=False,
+        )
 
     def get_current_player(self) -> int:
         return 1
