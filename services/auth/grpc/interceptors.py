@@ -7,13 +7,14 @@ import grpc
 
 from common.exceptions import ExpiredTokenError, InvalidTokenError
 from common.metrics import setup_metrics
+from services.auth.config import settings
 from services.auth.db.crud import get_user_from_token
 from services.auth.db.models import User
 from services.auth.exceptions import UnsupportedGRPCMethodError
 
 request_user: ContextVar[User | None] = ContextVar('request_user', default=None)
 
-meter = setup_metrics('duo.auth', 'localhost:4317')
+meter = setup_metrics(settings.service_name, settings.otel_url)
 grpc_requests = meter.create_counter(
     'grpc.server.request.count',
     description='Total gRPC calls',

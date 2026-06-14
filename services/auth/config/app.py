@@ -45,6 +45,9 @@ class AuthSettings(BaseSettings):
         default='localhost:50051',
     )
 
+    service_name: str = 'duo.auth'
+    otel_url: str = Field(alias='duo_auth_otel_url')
+
     @property
     def db_dsn(self) -> PostgresDsn:
         dsn = PostgresDsn.build(
