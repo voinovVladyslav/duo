@@ -1,4 +1,5 @@
 import enum
+import random
 from typing import Any, Literal
 
 from pydantic import BaseModel, field_validator
@@ -55,6 +56,122 @@ class PlayerView(BaseModel):
 
 def make_empty_grid() -> Grid:
     return [[Cell.EMPTY for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
+
+
+def _get_random_coordinate() -> Coordinate:
+    x = random.randint(0, 10)
+    y = random.randint(0, 10)
+    return x, y
+
+
+class Direction(str, enum.Enum):
+    TOP = 'top'
+    BOTTOM = 'bottom'
+    LEFT = 'left'
+    RIGHT = 'right'
+
+
+def _generate_directions() -> list[Direction]:
+    result = [Direction.TOP, Direction.BOTTOM, Direction.LEFT, Direction.RIGHT]
+    random.shuffle(result)
+    return result
+
+
+def is_placement_possible(
+    start: Coordinate,
+    direction: Direction,
+    size: int,
+) -> bool:
+    if direction == Direction.TOP:
+        return (start[0] - size) >= 0
+
+    if direction == Direction.BOTTOM:
+        return (start[0] + size) < GRID_SIZE
+
+    if direction == Direction.LEFT:
+        return (start[1] - size) >= 0
+
+    if direction == Direction.RIGHT:
+        return (start[1] + size) < GRID_SIZE
+
+
+def calculate_boat_position(
+    start: Coordinate,
+    direction: Direction,
+    size: int,
+) -> list[Coordinate]:
+    result: list[Coordinate] = []
+    if direction == Direction.BOTTOM:
+        for i in range(size):
+            result.append((start[0] + i, start[1]))
+        return result
+    if direction == Direction.TOP:
+        for i in range(size):
+            result.append((start[0] - i, start[1]))
+        return result
+    if direction == Direction.LEFT:
+        for i in range(size):
+            result.append((start[0], start[1] - i))
+        return result
+    if direction == Direction.RIGHT:
+        for i in range(size):
+            result.append((start[0], start[1] + i))
+        return result
+
+
+def get_coordinates_around_coordinate(position: Coordinate) -> set[Coordinate]:
+    coords: set[Coordinate] = {
+        (position[0] - 1, position[1] - 1),  # top left
+        (position[0] - 1, position[1] + 0),  # top top
+        (position[0] - 1, position[1] + 1),  # top right
+        (position[0] + 0, position[1] + 1),  # right right
+        (position[0] + 1, position[1] + 1),  # bottom right
+        (position[0] + 1, position[1] + 0),  # bottom bottom
+        (position[0] + 1, position[1] - 1),  # bottom left
+        (position[0] + 0, position[1] - 1),  # left left
+    }
+    res: set[Coordinate] = set()
+    for c in coords:
+        if c[0] == -1 or c[0] == GRID_SIZE or c[1] == -1 or c[1] == GRID_SIZE:
+            continue
+        res.add(c)
+    return res
+
+
+def has_ship_around(position: Coordinate, grid: Grid) -> bool:
+    coords_to_check = get_coordinates_around_coordinate(position)
+    for coord in coords_to_check:
+        if grid[coord[0]][coord[1]] == Cell.BOAT:
+            return True
+    return False
+
+
+def is_placement_allowed(positions: list[Coordinate], grid: Grid) -> bool:
+    for pos in positions:
+        if has_ship_around(pos, grid):
+            return False
+    return True
+
+
+def fill_grid(grid: Grid) -> Grid:
+    for ship_size in (5, 4, 3, 3, 2):
+        start_location = _get_random_coordinate()
+        directions = _generate_directions()
+        for direction in directions:
+            if not is_placement_possible(start_location, direction, ship_size):
+                continue
+    """
+    What matters for a boat? Size (5,4,3,3,2)
+    Orientation, where to prolong boat
+    Algo:
+        0. For ship_size in (5,4,3,3,2)
+        1. Generate starting location
+        2. Generate position (East, West, South, North) (random)
+        3. try placing boat in that position
+            3.1. Should not be outside of the map
+            3.2. Should not have other boat in 1 cell radius
+    """
+    return grid
 
 
 class Battleships(GameEngine[State, Move, PlayerView]):
