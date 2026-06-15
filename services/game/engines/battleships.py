@@ -59,8 +59,8 @@ def make_empty_grid() -> Grid:
 
 
 def _get_random_coordinate() -> Coordinate:
-    x = random.randint(0, 10)
-    y = random.randint(0, 10)
+    x = random.randint(0, 9)
+    y = random.randint(0, 9)
     return x, y
 
 
@@ -82,6 +82,7 @@ def is_placement_possible(
     direction: Direction,
     size: int,
 ) -> bool:
+    size = size - 1
     if direction == Direction.TOP:
         return (start[0] - size) >= 0
 
@@ -154,23 +155,23 @@ def is_placement_allowed(positions: list[Coordinate], grid: Grid) -> bool:
 
 
 def fill_grid(grid: Grid) -> Grid:
-    for ship_size in (5, 4, 3, 3, 2):
-        start_location = _get_random_coordinate()
-        directions = _generate_directions()
-        for direction in directions:
-            if not is_placement_possible(start_location, direction, ship_size):
-                continue
-    """
-    What matters for a boat? Size (5,4,3,3,2)
-    Orientation, where to prolong boat
-    Algo:
-        0. For ship_size in (5,4,3,3,2)
-        1. Generate starting location
-        2. Generate position (East, West, South, North) (random)
-        3. try placing boat in that position
-            3.1. Should not be outside of the map
-            3.2. Should not have other boat in 1 cell radius
-    """
+    for size in (5, 4, 3, 3, 2):
+        is_boat_placed: bool = False
+        while is_boat_placed is False:
+            start = _get_random_coordinate()
+            directions = _generate_directions()
+            for direction in directions:
+                if not is_placement_possible(start, direction, size):
+                    continue
+
+                position = calculate_boat_position(start, direction, size)
+                if not is_placement_allowed(position, grid):
+                    continue
+
+                for coord in position:
+                    grid[coord[0]][coord[1]] = Cell.BOAT
+
+                is_boat_placed = True
     return grid
 
 
