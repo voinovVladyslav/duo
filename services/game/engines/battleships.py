@@ -267,11 +267,14 @@ class Battleships(GameEngine[State, Move, PlayerView]):
 
     def get_player_view(self, player_id: int) -> PlayerView:
         your_turn = self.state.current_player == player_id
+        winner = self.get_winner()
+        if winner:
+            your_turn = False
         return PlayerView(
             your_turn=your_turn,
             your_grid=self.state.grids[player_id],
             opponent_grid=self._get_opponent_grid(player_id),
-            winner=self.get_winner(),
+            winner=winner,
             is_draw=self.is_draw(),
         )
 
