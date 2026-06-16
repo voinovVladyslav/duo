@@ -210,7 +210,7 @@ class Battleships(GameEngine[State, Move, PlayerView]):
             for row in grid:
                 if Cell.BOAT in row:
                     has_ships = True
-                break
+                    break
 
             if not has_ships:
                 return self._get_opponnet(player)
@@ -229,11 +229,10 @@ class Battleships(GameEngine[State, Move, PlayerView]):
         if self.is_game_over():
             return False
 
-        grid = self.state.grids[self.state.current_player]
-        return grid[move.coordinate[0]][move.coordinate[1]] in [
-            Cell.EMPTY,
-            Cell.BOAT,
-        ]
+        opponent = self._get_opponnet(self.state.current_player)
+        grid = self.state.grids[opponent]
+        cell = grid[move.coordinate[0]][move.coordinate[1]]
+        return cell in [Cell.EMPTY, Cell.BOAT]
 
     def make_move(self, move: Move) -> None:
         return None
