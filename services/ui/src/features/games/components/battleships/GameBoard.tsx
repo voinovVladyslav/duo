@@ -16,8 +16,16 @@ const styles = {
         interactive:
             "cursor-pointer hover:border-primary/60 hover:bg-primary/10 active:scale-95",
         static: "cursor-default",
+        boat: "border-primary/50 bg-primary/10",
+        hit: "border-rose-500/60 bg-rose-500/15",
         sunk: "border-rose-600 bg-rose-600/20",
     },
+}
+
+const cellTone: Record<string, string> = {
+    b: styles.cell.boat,
+    x: styles.cell.hit,
+    s: styles.cell.sunk,
 }
 
 export function GameBoard({
@@ -41,7 +49,7 @@ export function GameBoard({
                             disabled={!clickable}
                             className={clsx(
                                 styles.cell.base,
-                                value === "s" && styles.cell.sunk,
+                                cellTone[value],
                                 clickable
                                     ? styles.cell.interactive
                                     : styles.cell.static
