@@ -31,7 +31,7 @@ class State(BaseModel):
 
     @field_validator('grids')
     @classmethod
-    def validate_grid(cls, value: dict[int, Grid]):
+    def validate_grids(cls, value: dict[int, Grid]):
         for grid in value.values():
             if len(grid) != GRID_SIZE:
                 raise ValueError(
@@ -46,6 +46,7 @@ class State(BaseModel):
                 for cell in row:
                     if cell not in Cell._value2member_map_:
                         raise ValueError(f'Invalid cell v: {cell}')
+        return value
 
 
 class PlayerView(BaseModel):
@@ -204,7 +205,21 @@ class Battleships(GameEngine[State, Move, PlayerView]):
         return Move.model_validate_json(move)
 
     def get_winner(self) -> int | None:
+        for player, grid in self.state.grids.items():
+            has_ships = False
+            for row in grid:
+                if Cell.BOAT in row:
+                    has_ships = True
+                break
+
+            if not has_ships:
+                return self._get_opponnet(player)
         return None
+
+    def _get_opponnet(self, player: int) -> int:
+        if self.state.players[0] == player:
+            return self.state.players[1]
+        return self.state.players[0]
 
     def is_draw(self) -> bool:
         """Draw is impossible in battleships"""
