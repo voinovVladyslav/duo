@@ -1,7 +1,11 @@
-import type { BattleshipsState } from "@/features/games/types/battleships"
+export interface GameOutcome {
+    your_turn: boolean
+    is_draw: boolean
+    winner: number | null
+}
 
 export function getStatusText(
-    state: BattleshipsState,
+    state: GameOutcome,
     userId: number | undefined
 ): string {
     if (state.is_draw) return "It's a draw!"
@@ -11,7 +15,7 @@ export function getStatusText(
 }
 
 export function getDialogTitle(
-    state: BattleshipsState,
+    state: GameOutcome,
     userId: number | undefined
 ): string {
     if (state.is_draw) return "It's a draw!"

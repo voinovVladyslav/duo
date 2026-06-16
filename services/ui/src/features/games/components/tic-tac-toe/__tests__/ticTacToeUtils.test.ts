@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { getStatusText, getDialogTitle, opponentSymbol } from "../utils"
+import { getStatusText, getDialogTitle } from "../../shared/gameOutcome"
+import { opponentSymbol } from "../utils"
 import type { TicTacToeState } from "@/features/games/types/tic-tac-toe"
 
 const board: TicTacToeState["board"] = [
