@@ -2,6 +2,7 @@ import useAuthStore from "@/features/auth/stores/auth"
 import type { User } from "@/features/auth/types/user"
 import { BattleshipsStateSchema } from "@/features/games/types/battleships"
 import type { GameMoveMessage } from "@/features/games/types/game"
+import clsx from "clsx"
 import { GameOverDialog } from "../shared/GameOverDialog"
 import { GameStatus } from "../shared/GameStatus"
 import { GameBoard } from "./GameBoard"
@@ -21,6 +22,7 @@ export function Battleships({ gameState, sendMoveHandler, opponent }: Props) {
     }
     const state = data!
     const isOver = state.winner !== null || state.is_draw
+    const showEnemy = state.your_turn || isOver
 
     const handleClick = (i: number, j: number) => {
         sendMoveHandler({
@@ -67,8 +69,13 @@ export function Battleships({ gameState, sendMoveHandler, opponent }: Props) {
                 text={getStatusText(state, userId)}
             />
 
-            <div className="flex flex-col items-start justify-center gap-8 sm:flex-row">
-                <div className="flex flex-col items-center gap-2">
+            <div className="flex w-full max-w-md flex-col items-center justify-center gap-6 sm:max-w-none sm:flex-row sm:items-stretch sm:gap-8">
+                <div
+                    className={clsx(
+                        "flex flex-col items-center gap-2 sm:order-none sm:w-[30rem]",
+                        showEnemy ? "order-2 w-40 opacity-70" : "order-1 w-full"
+                    )}
+                >
                     <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                         Your fleet
                     </span>
@@ -79,7 +86,12 @@ export function Battleships({ gameState, sendMoveHandler, opponent }: Props) {
                         isOver={isOver}
                     />
                 </div>
-                <div className="flex flex-col items-center gap-2">
+                <div
+                    className={clsx(
+                        "flex flex-col items-center gap-2 sm:order-none sm:w-[30rem]",
+                        showEnemy ? "order-1 w-full" : "order-2 w-40 opacity-70"
+                    )}
+                >
                     <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                         Enemy waters
                     </span>
