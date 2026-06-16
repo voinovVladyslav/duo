@@ -214,10 +214,10 @@ class Battleships(GameEngine[State, Move, PlayerView]):
                     break
 
             if not has_ships:
-                return self._get_opponnet(player)
+                return self._get_opponent(player)
         return None
 
-    def _get_opponnet(self, player: int) -> int:
+    def _get_opponent(self, player: int) -> int:
         if self.state.players[0] == player:
             return self.state.players[1]
         return self.state.players[0]
@@ -230,7 +230,7 @@ class Battleships(GameEngine[State, Move, PlayerView]):
         if self.is_game_over():
             return False
 
-        opponent = self._get_opponnet(self.state.current_player)
+        opponent = self._get_opponent(self.state.current_player)
         grid = self.state.grids[opponent]
         cell = grid[move.coordinate[0]][move.coordinate[1]]
         return cell in [Cell.EMPTY, Cell.BOAT]
@@ -239,7 +239,7 @@ class Battleships(GameEngine[State, Move, PlayerView]):
         if not self.is_move_possible(move):
             raise InvalidMoveError('Move is invalid')
 
-        opponent = self._get_opponnet(self.state.current_player)
+        opponent = self._get_opponent(self.state.current_player)
         grid = self.state.grids[opponent]
         x, y = move.coordinate
         assert grid[x][y] not in [Cell.HIT, Cell.MISS]
@@ -250,13 +250,29 @@ class Battleships(GameEngine[State, Move, PlayerView]):
             grid[x][y] = Cell.MISS
             self.state.current_player = opponent
 
+    @staticmethod
+    def _get_masked_grid(grid: Grid) -> Grid:
+        result: Grid = make_empty_grid()
+        for i, row in enumerate(grid):
+            for j, cell in enumerate(row):
+                if cell == Cell.BOAT:
+                    result[i][j] = Cell.EMPTY
+                else:
+                    result[i][j] = cell
+        return result
+
+    def _get_opponent_grid(self, player_id: int) -> Grid:
+        opp = self._get_opponent(player_id)
+        return self._get_masked_grid(self.state.grids[opp])
+
     def get_player_view(self, player_id: int) -> PlayerView:
+        your_turn = self.state.current_player == player_id
         return PlayerView(
-            your_turn=False,
-            your_grid=[],
-            opponent_grid=[],
-            winner=None,
-            is_draw=False,
+            your_turn=your_turn,
+            your_grid=self.state.grids[player_id],
+            opponent_grid=self._get_opponent_grid(player_id),
+            winner=self.get_winner(),
+            is_draw=self.is_draw(),
         )
 
     def get_current_player(self) -> int:
