@@ -1,6 +1,6 @@
 import enum
 import random
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, field_validator
 
@@ -25,25 +25,27 @@ class Move(BaseModel):
 
 
 class State(BaseModel):
-    current_player: Literal[0, 1] = 0
+    current_player: int
     players: tuple[int, int]
-    p1: Grid
-    p2: Grid
+    grids: dict[int, Grid]
 
-    @field_validator('p1', 'p2')
+    @field_validator('grids')
     @classmethod
-    def validate_grid(cls, value: Grid):
-        if len(value) != GRID_SIZE:
-            raise ValueError(f'Invalid grid size: {len(value)} != {GRID_SIZE}')
-
-        for row in value:
-            if len(row) != GRID_SIZE:
+    def validate_grid(cls, value: dict[int, Grid]):
+        for grid in value.values():
+            if len(grid) != GRID_SIZE:
                 raise ValueError(
-                    f'Invalid grid size: {len(value)} != {GRID_SIZE}'
+                    f'Invalid grid size: {len(grid)} != {GRID_SIZE}'
                 )
-            for cell in row:
-                if cell not in Cell._value2member_map_:
-                    raise ValueError(f'Invalid cell value: {cell}')
+
+            for row in grid:
+                if len(row) != GRID_SIZE:
+                    raise ValueError(
+                        f'Invalid grid size: {len(grid)} != {GRID_SIZE}'
+                    )
+                for cell in row:
+                    if cell not in Cell._value2member_map_:
+                        raise ValueError(f'Invalid cell v: {cell}')
 
 
 class PlayerView(BaseModel):
@@ -184,11 +186,12 @@ def init_grid() -> Grid:
 class Battleships(GameEngine[State, Move, PlayerView]):
     @classmethod
     def new_game(cls, p1: int, p2: int):
+        grids = {p1: init_grid(), p2: init_grid()}
         return cls(
             state=State(
+                current_player=p1,
                 players=(p1, p2),
-                p1=init_grid(),
-                p2=init_grid(),
+                grids=grids,
             ),
         )
 
@@ -204,6 +207,7 @@ class Battleships(GameEngine[State, Move, PlayerView]):
         return None
 
     def is_draw(self) -> bool:
+        """Draw is impossible in battleships"""
         return False
 
     def is_move_possible(self, move: Move) -> bool:
@@ -222,4 +226,4 @@ class Battleships(GameEngine[State, Move, PlayerView]):
         )
 
     def get_current_player(self) -> int:
-        return 1
+        return self.state.current_player
