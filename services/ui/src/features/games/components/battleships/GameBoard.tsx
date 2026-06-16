@@ -12,7 +12,7 @@ interface Props {
 
 const styles = {
     cell: {
-        base: "flex h-10 w-10 items-center justify-center rounded-md border bg-card transition-all sm:h-12 sm:w-12",
+        base: "flex aspect-square items-center justify-center rounded-md border bg-card transition-all",
         interactive:
             "cursor-pointer hover:border-primary/60 hover:bg-primary/10 active:scale-95",
         static: "cursor-default",
@@ -36,7 +36,7 @@ export function GameBoard({
     onCellClick,
 }: Props) {
     return (
-        <div className="grid grid-cols-10 gap-1">
+        <div className="grid w-full grid-cols-10 gap-1">
             {grid.map((row, i) =>
                 row.map((value, j) => {
                     const shot = value === "x" || value === "m" || value === "s"
