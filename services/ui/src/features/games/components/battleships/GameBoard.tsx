@@ -16,6 +16,7 @@ const styles = {
         interactive:
             "cursor-pointer hover:border-primary/60 hover:bg-primary/10 active:scale-95",
         static: "cursor-default",
+        sunk: "border-rose-600 bg-rose-600/20",
     },
 }
 
@@ -30,7 +31,7 @@ export function GameBoard({
         <div className="grid grid-cols-10 gap-1">
             {grid.map((row, i) =>
                 row.map((value, j) => {
-                    const shot = value === "x" || value === "m"
+                    const shot = value === "x" || value === "m" || value === "s"
                     const clickable =
                         interactive && yourTurn && !isOver && !shot
                     return (
@@ -40,6 +41,7 @@ export function GameBoard({
                             disabled={!clickable}
                             className={clsx(
                                 styles.cell.base,
+                                value === "s" && styles.cell.sunk,
                                 clickable
                                     ? styles.cell.interactive
                                     : styles.cell.static

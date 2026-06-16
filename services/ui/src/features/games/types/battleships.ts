@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-export const CellSchema = z.enum(["", "b", "x", "m"])
+export const CellSchema = z.enum(["", "b", "x", "m", "s"])
 export const GridSchema = z.array(z.array(CellSchema).length(10)).length(10)
 export const BattleshipsStateSchema = z.object({
     your_turn: z.boolean(),
