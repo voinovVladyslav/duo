@@ -226,7 +226,14 @@ class Battleships(GameEngine[State, Move, PlayerView]):
         return False
 
     def is_move_possible(self, move: Move) -> bool:
-        return False
+        if self.is_game_over():
+            return False
+
+        grid = self.state.grids[self.state.current_player]
+        return grid[move.coordinate[0]][move.coordinate[1]] in [
+            Cell.EMPTY,
+            Cell.BOAT,
+        ]
 
     def make_move(self, move: Move) -> None:
         return None
