@@ -154,7 +154,8 @@ def is_placement_allowed(positions: list[Coordinate], grid: Grid) -> bool:
     return True
 
 
-def fill_grid(grid: Grid) -> Grid:
+def fill_grid(grid: Grid) -> None:
+    """Fills grid in place"""
     for size in (5, 4, 3, 3, 2):
         is_boat_placed: bool = False
         while is_boat_placed is False:
@@ -172,7 +173,6 @@ def fill_grid(grid: Grid) -> Grid:
                     grid[coord[0]][coord[1]] = Cell.BOAT
 
                 is_boat_placed = True
-    return grid
 
 
 class Battleships(GameEngine[State, Move, PlayerView]):
