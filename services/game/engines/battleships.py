@@ -175,10 +175,22 @@ def fill_grid(grid: Grid) -> None:
                 is_boat_placed = True
 
 
+def init_grid() -> Grid:
+    grid = make_empty_grid()
+    fill_grid(grid)
+    return grid
+
+
 class Battleships(GameEngine[State, Move, PlayerView]):
     @classmethod
     def new_game(cls, p1: int, p2: int):
-        return cls(state=State(players=(p1, p2), p1=[], p2=[]))
+        return cls(
+            state=State(
+                players=(p1, p2),
+                p1=init_grid(),
+                p2=init_grid(),
+            ),
+        )
 
     @classmethod
     def load_game(cls, state: dict[str, Any]):
