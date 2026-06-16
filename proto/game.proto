@@ -6,6 +6,7 @@ import "google/protobuf/timestamp.proto";
 
 enum GameType {
   TIC_TAC_TOE = 0;
+  BATTLESHIPS = 1;
 }
 
 enum GameResult {
