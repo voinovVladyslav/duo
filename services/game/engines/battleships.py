@@ -15,6 +15,7 @@ class Cell(str, enum.Enum):
     BOAT = 'b'
     HIT = 'x'
     MISS = 'm'
+    SUNK = 's'
 
 
 type Grid = list[list[Cell]]
@@ -185,6 +186,33 @@ def init_grid() -> Grid:
     return grid
 
 
+def get_ship_coords(start: Coordinate, grid: Grid) -> list[Coordinate]:
+    known: list[Coordinate] = [start]
+    coords_to_check = get_coordinates_around_coordinate(start)
+    while coords_to_check:
+        c = coords_to_check.pop()
+        if grid[c[0]][c[1]] in [Cell.BOAT, Cell.HIT]:
+            if c in known:
+                continue
+            known.append(c)
+            coords_to_check = coords_to_check.union(
+                get_coordinates_around_coordinate(c)
+            )
+
+    return known
+
+
+def check_if_sunk_ship(grid: Grid, hit: Coordinate):
+    """Checks if ship is sunk or just damaged, if sunk, mark as sunk"""
+    ship = get_ship_coords(hit, grid)
+    is_sunk = all([grid[c[0]][c[1]] == Cell.HIT for c in ship])
+    if not is_sunk:
+        return
+
+    for c in ship:
+        grid[c[0]][c[1]] = Cell.SUNK
+
+
 class Battleships(GameEngine[State, Move, PlayerView]):
     @classmethod
     def new_game(cls, p1: int, p2: int):
@@ -245,6 +273,7 @@ class Battleships(GameEngine[State, Move, PlayerView]):
         assert grid[x][y] not in [Cell.HIT, Cell.MISS]
         if grid[x][y] == Cell.BOAT:
             grid[x][y] = Cell.HIT
+            check_if_sunk_ship(grid, move.coordinate)
 
         if grid[x][y] == Cell.EMPTY:
             grid[x][y] = Cell.MISS
