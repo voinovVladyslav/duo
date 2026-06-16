@@ -5,6 +5,7 @@ from typing import Any
 from pydantic import BaseModel, field_validator
 
 from services.game.engines.base import GameEngine
+from services.game.exceptions import InvalidMoveError
 
 GRID_SIZE = 10
 
@@ -235,7 +236,19 @@ class Battleships(GameEngine[State, Move, PlayerView]):
         return cell in [Cell.EMPTY, Cell.BOAT]
 
     def make_move(self, move: Move) -> None:
-        return None
+        if not self.is_move_possible(move):
+            raise InvalidMoveError('Move is invalid')
+
+        opponent = self._get_opponnet(self.state.current_player)
+        grid = self.state.grids[opponent]
+        x, y = move.coordinate
+        assert grid[x][y] not in [Cell.HIT, Cell.MISS]
+        if grid[x][y] == Cell.BOAT:
+            grid[x][y] = Cell.HIT
+
+        if grid[x][y] == Cell.EMPTY:
+            grid[x][y] = Cell.MISS
+            self.state.current_player = opponent
 
     def get_player_view(self, player_id: int) -> PlayerView:
         return PlayerView(
