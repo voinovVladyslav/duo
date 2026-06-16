@@ -24,6 +24,11 @@ export function MainMenu() {
                     loading={loading}
                     onClick={() => handleCreateGame("tic_tac_toe")}
                 />
+                <GameCard
+                    title="Battleships"
+                    loading={loading}
+                    onClick={() => handleCreateGame("battleships")}
+                />
             </div>
         </div>
     )

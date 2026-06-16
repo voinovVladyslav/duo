@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-type GameType = "tic_tac_toe"
+type GameType = "tic_tac_toe" | "battleships"
 
 type GameResult = "tbd" | "draw" | "p1_won" | "p2_won"
 
