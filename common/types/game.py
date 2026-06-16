@@ -5,6 +5,7 @@ from generated import game_pb2
 
 class Type(str, Enum):
     TIC_TAC_TOE = 'tic_tac_toe'
+    BATTLESHIPS = 'battleships'
 
 
 class Result(str, Enum):
@@ -23,6 +24,7 @@ class Status(str, Enum):
 
 TYPE_TO_PROTO_MAP: dict[Type, game_pb2.GameType.ValueType] = {
     Type.TIC_TAC_TOE: game_pb2.TIC_TAC_TOE,
+    Type.BATTLESHIPS: game_pb2.BATTLESHIPS,
 }
 
 RESULT_TO_PROTO_MAP: dict[Result, game_pb2.GameResult.ValueType] = {
@@ -41,6 +43,7 @@ STATUS_TO_PROTO_MAP: dict[Status, game_pb2.GameStatus.ValueType] = {
 
 TYPE_FROM_PROTO_MAP: dict[game_pb2.GameType.ValueType, Type] = {
     game_pb2.TIC_TAC_TOE: Type.TIC_TAC_TOE,
+    game_pb2.BATTLESHIPS: Type.BATTLESHIPS,
 }
 
 RESULT_FROM_PROTO_MAP: dict[game_pb2.GameResult.ValueType, Result] = {
