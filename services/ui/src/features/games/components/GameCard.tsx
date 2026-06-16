@@ -1,43 +1,13 @@
-import { TicTacToeCell } from "@/features/games/components/tic-tac-toe/TicTacToeCell"
-
-const GRID_MARKS: ("x" | "o" | null)[] = [
-    "x",
-    "o",
-    null,
-    null,
-    "x",
-    "o",
-    "o",
-    null,
-    "x",
-]
-
-function MiniGrid() {
-    return (
-        <div className="relative mx-auto grid aspect-square w-48 grid-cols-3 grid-rows-3 gap-[3px] sm:w-36">
-            {GRID_MARKS.map((value, i) => (
-                <div
-                    key={i}
-                    className="flex items-center justify-center rounded-[3px] bg-white/5"
-                >
-                    <TicTacToeCell
-                        value={value}
-                        className="h-9 w-9 stroke-[3] sm:h-7 sm:w-7"
-                    />
-                </div>
-            ))}
-            <div className="pointer-events-none absolute inset-0 rounded-sm ring-1 ring-white/10" />
-        </div>
-    )
-}
+import type { ReactNode } from "react"
 
 interface GameCardProps {
     title: string
+    preview: ReactNode
     loading?: boolean
     onClick: () => void
 }
 
-export function GameCard({ title, loading, onClick }: GameCardProps) {
+export function GameCard({ title, preview, loading, onClick }: GameCardProps) {
     return (
         <button
             disabled={loading}
@@ -45,7 +15,7 @@ export function GameCard({ title, loading, onClick }: GameCardProps) {
             className="group relative flex w-72 cursor-pointer flex-col gap-5 overflow-hidden rounded-xl border border-white/10 bg-card p-6 text-left transition-all duration-200 hover:border-primary/50 hover:shadow-[0_0_24px_oklch(0.696_0.17_162.48/0.15)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 sm:w-64"
         >
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
-            <MiniGrid />
+            {preview}
             <div className="relative flex flex-col gap-1 text-center">
                 <span className="text-base font-semibold tracking-tight text-foreground sm:text-lg">
                     {title}
