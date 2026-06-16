@@ -1,4 +1,5 @@
 import { TicTacToe } from "@/features/games/components/tic-tac-toe/TicTacToe"
+import { Battleships } from "@/features/games/components/battleships/Battleships"
 import { WaitingForOpponent } from "@/features/games/components/WaitingForOpponent"
 import { useFetchGame } from "@/features/games/hooks/useFetchGame"
 import { useGameWebSocket } from "@/features/games/hooks/useGameWebSocket"
@@ -61,6 +62,13 @@ export function PlayGamePage() {
         <div className="flex w-full items-start justify-center">
             {game.type === "tic_tac_toe" && (
                 <TicTacToe
+                    gameState={gameState}
+                    sendMoveHandler={sendMessage}
+                    opponent={opponent}
+                />
+            )}
+            {game.type === "battleships" && (
+                <Battleships
                     gameState={gameState}
                     sendMoveHandler={sendMessage}
                     opponent={opponent}
