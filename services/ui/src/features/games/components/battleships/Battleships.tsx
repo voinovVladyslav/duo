@@ -2,10 +2,10 @@ import useAuthStore from "@/features/auth/stores/auth"
 import type { User } from "@/features/auth/types/user"
 import { BattleshipsStateSchema } from "@/features/games/types/battleships"
 import type { GameMoveMessage } from "@/features/games/types/game"
+import { GameOverDialog } from "../shared/GameOverDialog"
+import { GameStatus } from "../shared/GameStatus"
 import { GameBoard } from "./GameBoard"
-import { GameOverDialog } from "./GameOverDialog"
-import { GameStatus } from "./GameStatus"
-import { getDialogTitle, getStatusText } from "./utils"
+import { getDialogTitle, getStatusText } from "../shared/gameOutcome"
 
 interface Props {
     gameState: any

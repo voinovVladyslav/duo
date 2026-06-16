@@ -2,11 +2,12 @@ import useAuthStore from "@/features/auth/stores/auth"
 import type { User } from "@/features/auth/types/user"
 import type { GameMoveMessage } from "@/features/games/types/game"
 import { TicTacToeStateSchema } from "@/features/games/types/tic-tac-toe"
+import { GameOverDialog } from "../shared/GameOverDialog"
+import { GameStatus } from "../shared/GameStatus"
 import { GameBoard } from "./GameBoard"
-import { GameOverDialog } from "./GameOverDialog"
-import { GameStatus } from "./GameStatus"
 import { TicTacToeCell } from "./TicTacToeCell"
-import { getDialogTitle, getStatusText, opponentSymbol } from "./utils"
+import { getDialogTitle, getStatusText } from "../shared/gameOutcome"
+import { opponentSymbol } from "./utils"
 
 interface Props {
     gameState: any
