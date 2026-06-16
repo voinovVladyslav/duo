@@ -3,6 +3,7 @@ import pytest
 from services.game.engines.battleships import (
     Coordinate,
     Direction,
+    get_coordinates_around_coordinate,
     is_placement_possible,
 )
 
@@ -44,3 +45,39 @@ def test_is_placement_possible(
     start: Coordinate, direction: Direction, size: int, result: bool
 ):
     assert is_placement_possible(start, direction, size) is result
+
+
+@pytest.mark.parametrize(
+    ('coordinate', 'result'),
+    [
+        ((0, 0), {(0, 1), (1, 0), (1, 1)}),
+        (
+            (1, 1),
+            {
+                (0, 0),
+                (0, 1),
+                (0, 2),
+                (1, 0),
+                (1, 2),
+                (2, 0),
+                (2, 1),
+                (2, 2),
+            },
+        ),
+        (
+            (0, 1),
+            {
+                (0, 0),
+                (0, 2),
+                (1, 0),
+                (1, 1),
+                (1, 2),
+            },
+        ),
+    ],
+)
+def test_get_coordinates_around_coordinate(
+    coordinate: Coordinate,
+    result: set[Coordinate],
+):
+    assert get_coordinates_around_coordinate(coordinate) == result
