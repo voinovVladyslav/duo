@@ -12,7 +12,7 @@ interface Props {
 
 const styles = {
     cell: {
-        base: "flex h-7 w-7 items-center justify-center rounded-md border bg-card transition-all sm:h-8 sm:w-8",
+        base: "flex h-10 w-10 items-center justify-center rounded-md border bg-card transition-all sm:h-12 sm:w-12",
         interactive:
             "cursor-pointer hover:border-primary/60 hover:bg-primary/10 active:scale-95",
         static: "cursor-default",

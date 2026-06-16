@@ -8,7 +8,7 @@ interface Props {
 
 export function BattleshipsCell({
     value,
-    className = "size-5 stroke-[2.5]",
+    className = "size-7 stroke-[2.5]",
 }: Props) {
     if (value === "b") return <Ship className={`${className} text-primary`} />
     if (value === "s") return <Skull className={`${className} text-rose-600`} />
