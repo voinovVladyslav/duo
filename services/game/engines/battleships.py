@@ -58,6 +58,13 @@ class PlayerView(BaseModel):
     is_draw: bool
 
 
+class Direction(str, enum.Enum):
+    TOP = 'top'
+    BOTTOM = 'bottom'
+    LEFT = 'left'
+    RIGHT = 'right'
+
+
 def make_empty_grid() -> Grid:
     return [[Cell.EMPTY for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
 
@@ -66,13 +73,6 @@ def _get_random_coordinate() -> Coordinate:
     x = random.randint(0, 9)
     y = random.randint(0, 9)
     return x, y
-
-
-class Direction(str, enum.Enum):
-    TOP = 'top'
-    BOTTOM = 'bottom'
-    LEFT = 'left'
-    RIGHT = 'right'
 
 
 def _generate_directions() -> list[Direction]:
