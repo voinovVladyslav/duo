@@ -7,3 +7,8 @@ datasources:
     isDefault: true
     jsonData:
       httpMethod: POST
+
+  - name: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
