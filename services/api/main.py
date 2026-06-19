@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -16,6 +17,8 @@ from services.api.routers.websockets import router as ws_router
 
 if settings.sentry_dsn:
     init_sentry(dsn=settings.sentry_dsn)
+
+logger = logging.getLogger('duo.api.main')
 
 
 @asynccontextmanager
@@ -59,4 +62,5 @@ app.include_router(ws_router, prefix='/ws')
 
 @app.get('/', tags=['status'])
 async def main() -> dict[str, Any]:
+    logger.info('accessing default endpoint', extra={'my_label': 'some value'})
     return {'status': 'ok'}
