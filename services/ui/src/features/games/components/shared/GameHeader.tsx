@@ -1,50 +1,57 @@
+import clsx from "clsx"
 import type { ReactNode } from "react"
-import { GameStatus } from "./GameStatus"
 
 interface Props {
-    title: string
     opponentName: string
     yourTurn: boolean
     isOver: boolean
-    statusText: string
     youSlot?: ReactNode
     opponentSlot?: ReactNode
 }
 
+const styles = {
+    pill: "inline-flex min-w-0 items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-all",
+    active: "bg-primary text-primary-foreground shadow-sm",
+    inactive: "bg-muted text-muted-foreground",
+}
+
 export function GameHeader({
-    title,
     opponentName,
     yourTurn,
     isOver,
-    statusText,
     youSlot,
     opponentSlot,
 }: Props) {
+    const youActive = !isOver && yourTurn
+    const opponentActive = !isOver && !yourTurn
+
     return (
-        <div className="flex flex-col items-center gap-2">
-            <h2 className="text-lg font-bold tracking-tight">{title}</h2>
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                <div
-                    className={`flex items-center justify-end gap-1.5 transition-opacity ${!isOver && yourTurn ? "opacity-100" : "opacity-40"}`}
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+            <div className="flex min-w-0 justify-end">
+                <span
+                    className={clsx(
+                        styles.pill,
+                        youActive ? styles.active : styles.inactive
+                    )}
                 >
-                    <span className="text-sm font-medium text-foreground">
-                        You
-                    </span>
+                    <span>You</span>
                     {youSlot}
-                </div>
-                <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                    vs
                 </span>
-                <div
-                    className={`flex min-w-0 items-center justify-start gap-1.5 transition-opacity ${!isOver && !yourTurn ? "opacity-100" : "opacity-40"}`}
+            </div>
+            <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                vs
+            </span>
+            <div className="flex min-w-0 justify-start">
+                <span
+                    className={clsx(
+                        styles.pill,
+                        opponentActive ? styles.active : styles.inactive
+                    )}
                 >
                     {opponentSlot}
-                    <span className="truncate text-sm font-medium text-foreground">
-                        {opponentName}
-                    </span>
-                </div>
+                    <span className="truncate">{opponentName}</span>
+                </span>
             </div>
-            <GameStatus isOver={isOver} yourTurn={yourTurn} text={statusText} />
         </div>
     )
 }

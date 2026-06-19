@@ -5,7 +5,7 @@ import type { GameMoveMessage } from "@/features/games/types/game"
 import { GameHeader } from "../shared/GameHeader"
 import { GameOverDialog } from "../shared/GameOverDialog"
 import { GameBoard } from "./GameBoard"
-import { getDialogTitle, getStatusText } from "../shared/gameOutcome"
+import { getDialogTitle } from "../shared/gameOutcome"
 
 interface Props {
     gameState: any
@@ -37,11 +37,9 @@ export function Battleships({ gameState, sendMoveHandler, opponent }: Props) {
             />
 
             <GameHeader
-                title="Battleships"
                 opponentName={opponent ? opponent.email : "Opponent"}
                 yourTurn={state.your_turn}
                 isOver={isOver}
-                statusText={getStatusText(state, userId)}
             />
 
             <div className="flex w-full max-w-md flex-col items-stretch justify-center gap-4 sm:max-w-none sm:flex-row sm:gap-8">
