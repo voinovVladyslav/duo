@@ -2,9 +2,8 @@ import useAuthStore from "@/features/auth/stores/auth"
 import type { User } from "@/features/auth/types/user"
 import { BattleshipsStateSchema } from "@/features/games/types/battleships"
 import type { GameMoveMessage } from "@/features/games/types/game"
-import clsx from "clsx"
+import { GameHeader } from "../shared/GameHeader"
 import { GameOverDialog } from "../shared/GameOverDialog"
-import { GameStatus } from "../shared/GameStatus"
 import { GameBoard } from "./GameBoard"
 import { getDialogTitle, getStatusText } from "../shared/gameOutcome"
 
@@ -22,7 +21,6 @@ export function Battleships({ gameState, sendMoveHandler, opponent }: Props) {
     }
     const state = data!
     const isOver = state.winner !== null || state.is_draw
-    const showEnemy = state.your_turn || isOver
 
     const handleClick = (i: number, j: number) => {
         sendMoveHandler({
@@ -32,66 +30,22 @@ export function Battleships({ gameState, sendMoveHandler, opponent }: Props) {
     }
 
     return (
-        <div className="flex flex-col items-center gap-6 p-8">
+        <div className="flex flex-col items-center gap-4 p-4">
             <GameOverDialog
                 isOver={isOver}
                 title={getDialogTitle(state, userId)}
             />
 
-            <div className="flex flex-col items-center gap-3">
-                <h2 className="text-2xl font-bold tracking-tight">
-                    Battleships
-                </h2>
-                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                    <div
-                        className={`flex items-center justify-end gap-1.5 transition-opacity ${!isOver && state.your_turn ? "opacity-100" : "opacity-40"}`}
-                    >
-                        <span className="text-sm font-medium text-foreground">
-                            You
-                        </span>
-                    </div>
-                    <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                        vs
-                    </span>
-                    <div
-                        className={`flex min-w-0 items-center justify-start gap-1.5 transition-opacity ${!isOver && !state.your_turn ? "opacity-100" : "opacity-40"}`}
-                    >
-                        <span className="truncate text-sm font-medium text-foreground">
-                            {opponent ? opponent.email : "Opponent"}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <GameStatus
-                isOver={isOver}
+            <GameHeader
+                title="Battleships"
+                opponentName={opponent ? opponent.email : "Opponent"}
                 yourTurn={state.your_turn}
-                text={getStatusText(state, userId)}
+                isOver={isOver}
+                statusText={getStatusText(state, userId)}
             />
 
-            <div className="flex w-full max-w-md flex-col items-center justify-center gap-6 sm:max-w-none sm:flex-row sm:items-stretch sm:gap-8">
-                <div
-                    className={clsx(
-                        "flex flex-col items-center gap-2 sm:order-none sm:w-[30rem]",
-                        showEnemy ? "order-2 w-40 opacity-70" : "order-1 w-full"
-                    )}
-                >
-                    <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                        Your fleet
-                    </span>
-                    <GameBoard
-                        grid={state.your_grid}
-                        interactive={false}
-                        yourTurn={state.your_turn}
-                        isOver={isOver}
-                    />
-                </div>
-                <div
-                    className={clsx(
-                        "flex flex-col items-center gap-2 sm:order-none sm:w-[30rem]",
-                        showEnemy ? "order-1 w-full" : "order-2 w-40 opacity-70"
-                    )}
-                >
+            <div className="flex w-full max-w-md flex-col items-stretch justify-center gap-4 sm:max-w-none sm:flex-row sm:gap-8">
+                <div className="flex flex-col items-center gap-2 sm:w-[30rem]">
                     <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                         Enemy waters
                     </span>
@@ -101,6 +55,17 @@ export function Battleships({ gameState, sendMoveHandler, opponent }: Props) {
                         yourTurn={state.your_turn}
                         isOver={isOver}
                         onCellClick={handleClick}
+                    />
+                </div>
+                <div className="flex flex-col items-center gap-2 sm:w-[30rem]">
+                    <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                        Your fleet
+                    </span>
+                    <GameBoard
+                        grid={state.your_grid}
+                        interactive={false}
+                        yourTurn={state.your_turn}
+                        isOver={isOver}
                     />
                 </div>
             </div>
