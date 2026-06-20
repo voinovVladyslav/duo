@@ -1,3 +1,4 @@
+import logging
 import time
 from collections.abc import Awaitable, Callable
 from contextvars import ContextVar
@@ -10,6 +11,8 @@ from common.metrics import setup_metrics
 from common.token import decode_token
 from services.game.config import settings
 from services.game.exceptions import UnsupportedGRPCMethodError
+
+logger = logging.getLogger('duo.game.grpc')
 
 request_user: ContextVar[int | None] = ContextVar('request_user', default=None)
 
@@ -59,7 +62,13 @@ class AuthInterceptor(grpc.aio.ServerInterceptor):
 
         try:
             user = get_user_from_token(token_raw=token)
-        except InvalidTokenError, ExpiredTokenError:
+        except (InvalidTokenError, ExpiredTokenError) as exc:
+            logger.info(
+                'token rejected',
+                extra={
+                    'reason': type(exc).__name__,
+                },
+            )
             user = None
 
         if handler.unary_unary is not None:
