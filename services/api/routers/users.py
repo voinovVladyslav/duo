@@ -1,9 +1,11 @@
+import logging
 from http import HTTPStatus
 
 from fastapi import APIRouter, HTTPException
 from google.protobuf.empty_pb2 import Empty
 from grpc import StatusCode, aio
 
+from common.masks import mask_email
 from generated import auth_pb2
 from services.api.dependencies import UserServiceDep
 from services.api.schemas.auth import (
@@ -17,6 +19,8 @@ from services.api.token import get_user_from_token
 
 router = APIRouter(tags=['users'])
 
+logger = logging.getLogger('duo.api.users')
+
 
 @router.get('/me/')
 async def user_me(
@@ -25,6 +29,7 @@ async def user_me(
 ) -> UserDisplay:
     user = get_user_from_token(credentials.credentials)
     if user is None:
+        logger.info('rejected invalid token on /me')
         raise HTTPException(
             status_code=HTTPStatus.UNAUTHORIZED, detail='Not authenticated'
         )
@@ -43,10 +48,12 @@ async def user_me(
         )
     except aio.AioRpcError as exc:
         if exc.code() == StatusCode.UNAUTHENTICATED:
+            logger.info('unauthenticated on /me', extra={'user_id': user})
             raise HTTPException(
                 status_code=HTTPStatus.UNAUTHORIZED, detail='Not authenticated'
             )
 
+        logger.exception('failed to fetch /me', extra={'user_id': user})
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST, detail='Bad request'
         )
@@ -60,14 +67,14 @@ async def user_detail(
 ) -> UserDisplay:
     user = get_user_from_token(credentials.credentials)
     if user is None:
+        logger.info('rejected invalid token on user detail')
         raise HTTPException(
             status_code=HTTPStatus.UNAUTHORIZED, detail='Not authenticated'
         )
+    extra = {'user_id': user, 'target_id': user_id}
     try:
         resp = await stub.GetUserById(
-            auth_pb2.GetUserByIdRequest(
-                id=user_id,
-            ),
+            auth_pb2.GetUserByIdRequest(id=user_id),
             timeout=2,
             metadata=(('authorization', credentials.credentials),),
         )
@@ -79,13 +86,16 @@ async def user_detail(
         )
     except aio.AioRpcError as exc:
         if exc.code() == StatusCode.UNAUTHENTICATED:
+            logger.info('unauthenticated on user detail', extra=extra)
             raise HTTPException(
                 status_code=HTTPStatus.UNAUTHORIZED, detail='Not Authorized'
             )
         if exc.code() == StatusCode.NOT_FOUND:
+            logger.info('user detail not found', extra=extra)
             raise HTTPException(
                 status_code=HTTPStatus.NOT_FOUND, detail='Not Found'
             )
+        logger.exception('failed to fetch user detail', extra=extra)
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail='Unexpected error',
@@ -100,15 +110,18 @@ async def user_update_email(
 ) -> UserDisplay:
     user = get_user_from_token(credentials.credentials)
     if user is None:
+        logger.info('rejected invalid token on email update')
         raise HTTPException(
             status_code=HTTPStatus.UNAUTHORIZED, detail='Not authenticated'
         )
+    extra = {'user_id': user, 'new_email': mask_email(data.email)}
     try:
         resp = await stub.UpdateUserEmail(
             auth_pb2.UpdateUserEmailRequest(new_email=data.email),
             timeout=2,
             metadata=(('authorization', credentials.credentials),),
         )
+        logger.info('user email updated', extra=extra)
         return UserDisplay(
             id=resp.id,
             email=resp.email,
@@ -117,15 +130,18 @@ async def user_update_email(
         )
     except aio.AioRpcError as exc:
         if exc.code() == StatusCode.UNAUTHENTICATED:
+            logger.info('unauthenticated on email update', extra=extra)
             raise HTTPException(
                 status_code=HTTPStatus.UNAUTHORIZED, detail='Unauthenticated'
             )
 
         if exc.code() == StatusCode.ALREADY_EXISTS:
+            logger.info('email update conflict', extra=extra)
             raise HTTPException(
                 status_code=HTTPStatus.CONFLICT,
                 detail='User with this email already exists',
             )
+        logger.exception('failed to update email', extra=extra)
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail='Unexpected error',
@@ -140,9 +156,11 @@ async def user_update_password(
 ) -> JsonWebToken:
     user = get_user_from_token(credentials.credentials)
     if user is None:
+        logger.info('rejected invalid token on password update')
         raise HTTPException(
             status_code=HTTPStatus.UNAUTHORIZED, detail='Not authenticated'
         )
+    extra = {'user_id': user}
     try:
         resp = await stub.UpdateUserPassword(
             auth_pb2.UpdateUserPasswordRequest(
@@ -151,6 +169,7 @@ async def user_update_password(
             timeout=2,
             metadata=(('authorization', credentials.credentials),),
         )
+        logger.info('user password updated', extra=extra)
         return JsonWebToken(
             access_token=resp.access_token,
             token_type='Bearer',
@@ -159,10 +178,12 @@ async def user_update_password(
         )
     except aio.AioRpcError as exc:
         if exc.code() == StatusCode.UNAUTHENTICATED:
+            logger.info('unauthenticated on password update', extra=extra)
             raise HTTPException(
                 status_code=HTTPStatus.UNAUTHORIZED, detail='Unauthenticated'
             )
 
+        logger.exception('failed to update password', extra=extra)
         raise HTTPException(
             status_code=HTTPStatus.UNAUTHORIZED, detail='Unknown error'
         )
