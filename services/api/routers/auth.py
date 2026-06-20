@@ -1,9 +1,10 @@
 import logging
 from http import HTTPStatus
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from grpc import StatusCode, aio
 
+from common.masks import mask_email
 from generated import auth_pb2
 from services.api.dependencies import UserServiceDep
 from services.api.schemas.auth import (
@@ -21,7 +22,12 @@ logger = logging.getLogger('duo.api.auth')
 async def user_register(
     data: UserRegisterRequest,
     stub: UserServiceDep,
+    request: Request,
 ) -> JsonWebToken:
+    extra = {
+        'client': request.client.host if request.client else 'unknown',
+        'email': mask_email(data.email),
+    }
     try:
         resp = await stub.CreateUser(
             auth_pb2.CreateUserRequest(
@@ -30,6 +36,7 @@ async def user_register(
             ),
             timeout=2,
         )
+        logger.info('user registered', extra=extra)
         return JsonWebToken(
             access_token=resp.access_token,
             token_type='Bearer',
@@ -37,11 +44,14 @@ async def user_register(
             expires_at=resp.expires_at.ToDatetime().timestamp(),
         )
     except aio.AioRpcError as exc:
+        extra = {**extra, 'reason': exc.code().name}
         if exc.code() == StatusCode.ALREADY_EXISTS:
+            logger.info('failed to register user. already exists', extra=extra)
             raise HTTPException(
                 status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
                 detail='User already exists',
             )
+        logger.exception('internal server error', extra=extra)
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail='Failed to register. Try again later',
@@ -50,9 +60,12 @@ async def user_register(
 
 @router.post('/login/')
 async def user_login(
-    data: UserLoginRequest,
-    stub: UserServiceDep,
+    data: UserLoginRequest, stub: UserServiceDep, request: Request
 ) -> JsonWebToken:
+    extra = {
+        'client': request.client.host if request.client else 'unknown',
+        'email': mask_email(data.email),
+    }
     try:
         resp = await stub.LoginUser(
             auth_pb2.LoginUserRequest(
@@ -61,6 +74,7 @@ async def user_login(
             ),
             timeout=2,
         )
+        logger.info('user logged in', extra=extra)
         return JsonWebToken(
             access_token=resp.access_token,
             token_type='Bearer',
@@ -68,17 +82,19 @@ async def user_login(
             expires_at=resp.expires_at.ToDatetime().timestamp(),
         )
     except aio.AioRpcError as exc:
+        extra = {**extra, 'reason': exc.code().name}
         if exc.code() in [
             StatusCode.UNAUTHENTICATED,
             StatusCode.INVALID_ARGUMENT,
             StatusCode.NOT_FOUND,
         ]:
+            logger.info('failed login attempt', extra=extra)
             raise HTTPException(
                 status_code=HTTPStatus.UNAUTHORIZED,
                 detail='Invalid email or password',
             )
 
-        logger.exception('internal server error')
+        logger.exception('internal server error', extra=extra)
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail='Internal error',
