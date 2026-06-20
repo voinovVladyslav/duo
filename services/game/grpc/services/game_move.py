@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any, override
 
 from grpc import StatusCode
@@ -8,6 +9,8 @@ from common.proto import datetime_to_timestamp
 from generated import game_pb2, game_pb2_grpc
 from services.game.db.crud import get_game_move_by_id, get_game_moves
 from services.game.db.models import GameMove
+
+logger = logging.getLogger('duo.game.grpc')
 
 
 def _game_move_to_proto(move: GameMove) -> game_pb2.GameMove:
@@ -32,6 +35,7 @@ class GameMoveService(game_pb2_grpc.GameMoveServiceServicer):
     ) -> game_pb2.GameMove:
         move = await get_game_move_by_id(id=request.move_id)
         if move is None:
+            logger.info('move not found', extra={'move_id': request.move_id})
             await context.abort(code=StatusCode.NOT_FOUND)
         return _game_move_to_proto(move)
 
