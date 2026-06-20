@@ -5,6 +5,7 @@ from google.protobuf.empty_pb2 import Empty
 from grpc import StatusCode
 from grpc.aio import ServicerContext
 
+from common.masks import mask_email
 from common.proto import datetime_to_timestamp
 from generated import auth_pb2_grpc
 from generated.auth_pb2 import (
@@ -37,16 +38,24 @@ class UserService(auth_pb2_grpc.UserServiceServicer):
         request: CreateUserRequest,
         context: ServicerContext[Any, Any],
     ) -> AuthResponse:
+        email = mask_email(request.email)
         try:
             user = await user_create(
                 email=request.email,
                 password=request.password,
             )
         except EmailAlreadyUsedError:
+            logger.info(
+                'registration rejected, email in use',
+                extra={
+                    'email': email,
+                },
+            )
             await context.abort(
                 code=StatusCode.ALREADY_EXISTS, details='Email already used'
             )
 
+        logger.info('user created', extra={'user_id': user.id, 'email': email})
         token = issue_token(user=user)
         return AuthResponse(
             access_token=token.access_token,
@@ -58,19 +67,35 @@ class UserService(auth_pb2_grpc.UserServiceServicer):
     async def LoginUser(
         self, request: LoginUserRequest, context: ServicerContext[Any, Any]
     ) -> AuthResponse:
+        email = mask_email(request.email)
         user = await get_user_by_email(email=request.email)
         if user is None:
+            logger.info('login failed, user not found', extra={'email': email})
             await context.abort(
                 code=StatusCode.NOT_FOUND,
                 details='User not found',
             )
 
         if not check_password(request.password, user.hashed_password):
+            logger.info(
+                'login failed, bad password',
+                extra={
+                    'user_id': user.id,
+                    'email': email,
+                },
+            )
             await context.abort(
                 code=StatusCode.INVALID_ARGUMENT,
                 details='Invalid password',
             )
 
+        logger.info(
+            'user logged in',
+            extra={
+                'user_id': user.id,
+                'email': email,
+            },
+        )
         token = issue_token(user=user)
         return AuthResponse(
             access_token=token.access_token,
@@ -86,6 +111,7 @@ class UserService(auth_pb2_grpc.UserServiceServicer):
     ) -> User:
         user = get_current_user()
         if user is None:
+            logger.warning('unauthenticated email update')
             await context.abort(
                 code=StatusCode.UNAUTHENTICATED,
                 details='Not authenticated',
@@ -95,15 +121,34 @@ class UserService(auth_pb2_grpc.UserServiceServicer):
         try:
             await user_update(user=user, email=new_email)
         except EmailAlreadyUsedError:
+            logger.info(
+                'email update rejected, in use',
+                extra={
+                    'user_id': user.id,
+                    'new_email': mask_email(new_email),
+                },
+            )
             await context.abort(
                 code=StatusCode.ALREADY_EXISTS, details='Email already exists'
             )
-        except Exception as exc:
-            logger.exception('UpdateUserEmail: Unhandled exception: %s', exc)
+        except Exception:
+            logger.exception(
+                'failed to update email',
+                extra={
+                    'user_id': user.id,
+                },
+            )
             await context.abort(
                 code=StatusCode.INTERNAL, details='Unhandled exception'
             )
 
+        logger.info(
+            'user email updated',
+            extra={
+                'user_id': user.id,
+                'new_email': mask_email(new_email),
+            },
+        )
         assert user.id is not None
         return User(
             id=user.id,
@@ -121,6 +166,7 @@ class UserService(auth_pb2_grpc.UserServiceServicer):
     ) -> AuthResponse:
         user = get_current_user()
         if user is None:
+            logger.warning('unauthenticated password update')
             await context.abort(
                 code=StatusCode.UNAUTHENTICATED,
                 details='Not authenticated',
@@ -129,12 +175,18 @@ class UserService(auth_pb2_grpc.UserServiceServicer):
         new_password = request.new_password
         try:
             await user_update(user=user, password=new_password)
-        except Exception as exc:
-            logger.exception('UpdateUserPassword: unhandled exception: %s', exc)
+        except Exception:
+            logger.exception(
+                'failed to update password',
+                extra={
+                    'user_id': user.id,
+                },
+            )
             await context.abort(
                 code=StatusCode.INTERNAL, details='Unhandled exception'
             )
 
+        logger.info('user password updated', extra={'user_id': user.id})
         token = issue_token(user=user)
         return AuthResponse(
             access_token=token.access_token,
@@ -148,6 +200,7 @@ class UserService(auth_pb2_grpc.UserServiceServicer):
     ) -> User:
         user = get_current_user()
         if user is None:
+            logger.warning('unauthenticated GetCurrentUser')
             await context.abort(
                 code=StatusCode.UNAUTHENTICATED,
                 details='Not authenticated',
@@ -168,6 +221,12 @@ class UserService(auth_pb2_grpc.UserServiceServicer):
     ) -> User:
         user = await get_user_by_id(id=request.id)
         if user is None:
+            logger.info(
+                'user lookup not found',
+                extra={
+                    'target_id': request.id,
+                },
+            )
             await context.abort(
                 code=StatusCode.NOT_FOUND,
                 details='User not found',

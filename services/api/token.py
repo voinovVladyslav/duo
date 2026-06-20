@@ -15,5 +15,5 @@ def decode_token(token: str) -> TokenDetails:
 def get_user_from_token(token_raw: str) -> int | None:
     try:
         return decode_token(token_raw).sub
-    except (InvalidTokenError, ExpiredTokenError):
+    except InvalidTokenError, ExpiredTokenError:
         return None
