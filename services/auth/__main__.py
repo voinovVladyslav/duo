@@ -4,6 +4,7 @@ import signal
 
 from grpc import aio
 
+from common.metrics import setup_logs
 from generated import auth_pb2_grpc
 from services.auth.config import settings
 from services.auth.config.sentry import init_sentry
@@ -17,6 +18,7 @@ if settings.sentry_dsn:
 
 
 async def serve() -> None:
+    setup_logs(settings.service_name, settings.otel_url, settings.otel_interval)
     interceptors = (
         OTELInterceptor(),
         AuthInterceptor(),
