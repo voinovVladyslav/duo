@@ -7,7 +7,7 @@ from typing import Any, cast, override
 import grpc
 
 from common.exceptions import ExpiredTokenError, InvalidTokenError
-from common.metrics import setup_metrics
+from common.otel import setup_metrics
 from services.auth.config import settings
 from services.auth.db.crud import get_user_from_token
 from services.auth.db.models import User

@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from grpc import aio
 
-from common.metrics import setup_logs
+from common.otel import setup_logs
 from services.api.config import settings
 from services.api.config.sentry import init_sentry
 from services.api.middleware.otel import OTELClientInterceptor, OTELMiddleware

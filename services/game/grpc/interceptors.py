@@ -7,7 +7,7 @@ from typing import Any, cast, override
 import grpc
 
 from common.exceptions import ExpiredTokenError, InvalidTokenError
-from common.metrics import setup_metrics
+from common.otel import setup_metrics
 from common.token import decode_token
 from services.game.config import settings
 from services.game.exceptions import UnsupportedGRPCMethodError
