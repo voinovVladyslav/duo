@@ -11,7 +11,7 @@ from grpc.aio import (
 from starlette.routing import Match
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from common.metrics import setup_metrics
+from common.otel import setup_metrics
 from services.api.config import settings
 
 meter = setup_metrics(
