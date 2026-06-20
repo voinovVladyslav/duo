@@ -70,13 +70,13 @@ async def handle_authentication(
     message = GameMessageAdapter.validate_python(await websocket.receive_json())
 
     if message.type != MessageType.TOKEN:
-        logger.debug('received message is not token, rejecting')
+        logger.warning('first message is not a token, rejecting')
         await websocket.close(code=1008, reason='not authenticated')
         return None
 
     user = get_user_from_token(message.body.token)
     if user is None:
-        logger.debug('token is not valid, rejecting')
+        logger.warning('invalid token, rejecting')
         await websocket.close(code=1008, reason='not authenticated')
         return None
 
@@ -96,6 +96,7 @@ async def _game_loop(
         )
         ctx.logger.debug('message received: %s', message)
         if message.type != MessageType.GAME_MOVE:
+            ctx.logger.warning('expected a game move, got %s', message.type)
             await ctx.websocket.send_text(
                 InvalidMoveMessage(
                     body=InvalidMoveMessageBody(message='invalid move')
@@ -111,6 +112,10 @@ async def _game_loop(
                 )
             )
         except Exception:
+            ctx.logger.warning(
+                'move rejected by game service',
+                extra={'move_data': message.body.game_move},
+            )
             await ctx.websocket.send_text(
                 InvalidMoveMessage(
                     body=InvalidMoveMessageBody(message='invalid move')
@@ -259,7 +264,7 @@ async def play_game(
             return
 
         logger.extra['user_id'] = user
-        logger.debug('user verified')
+        logger.info('user verified')
         await channel.subscribe(f'game:{game_id}:{user}')  # pyright: ignore
 
         is_first_player_connects = game.player1 == user and game.player2 == 0
@@ -273,7 +278,7 @@ async def play_game(
                 is_player_reconnected,
             ]
         ):
-            logger.debug('player does not belong to a game')
+            logger.warning('user does not belong to this game')
             await websocket.close()
             return
 
@@ -287,10 +292,10 @@ async def play_game(
         )
 
         if is_first_player_connects:
-            logger.debug('first player connected, waiting for second player')
+            logger.info('first player connected')
 
         elif is_second_player_joins:
-            logger.debug('second player joins game')
+            logger.info('second player connected')
             game = await _handle_second_player_join(
                 ctx=ctx,
                 game=game,
@@ -298,7 +303,7 @@ async def play_game(
             )
 
         elif is_player_reconnected:
-            logger.debug('second player is reconnected, can safely play a game')
+            logger.info('player reconnected')
             await _handle_player_reconnected(
                 ctx=ctx,
                 game=game,
@@ -317,7 +322,7 @@ async def play_game(
             ),
         )
     except WebSocketDisconnect:
-        logger.debug('user disconnected')
+        logger.info('user disconnected')
     except Exception:
         logger.exception('Unexpected exception')
     finally:
