@@ -35,8 +35,16 @@ LEVEL_COLORS = {
 
 class ColorfulFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
+        levelname = record.levelname
+        name = record.name
         color = LEVEL_COLORS.get(record.levelname, '')
         padded = f'{record.levelname:<8}'
         record.levelname = f'{color}{padded}{RESET}'
         record.name = f'{BOLD + DIM}{record.name}{RESET}'
-        return super().format(record)
+        try:
+            return super().format(record)
+        finally:
+            # restore original values after applying color
+            record.levelname = levelname
+            record.name = name
+
