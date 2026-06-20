@@ -100,7 +100,7 @@ addopts = """
 --strict-markers 
 --disable-warnings
 """
-testpaths = ["services"]
+testpaths = ["services", "common"]
 norecursedirs = ["*.egg", ".git", "__pycache__", "services/ui"]
 
 python_files = ["test_*.py"]
