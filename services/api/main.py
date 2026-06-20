@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from grpc import aio
 
+from common.metrics import setup_logs
 from services.api.config import settings
 from services.api.config.sentry import init_sentry
 from services.api.middleware.otel import OTELClientInterceptor, OTELMiddleware
@@ -23,6 +24,7 @@ logger = logging.getLogger('duo.api.main')
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    setup_logs(settings.service_name, settings.otel_url, settings.otel_interval)
     app.state.auth_channel = aio.insecure_channel(
         str(settings.auth_service_url),
         interceptors=[OTELClientInterceptor()],
