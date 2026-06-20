@@ -1,3 +1,4 @@
+import logging
 from http import HTTPStatus
 
 from fastapi import APIRouter, HTTPException
@@ -16,6 +17,8 @@ from services.api.security import Credentials
 from services.api.token import get_user_from_token
 
 router = APIRouter(tags=['games'])
+
+logger = logging.getLogger('duo.api.games')
 
 
 def _game_proto_to_response(game: game_pb2.Game) -> GameResponse:
@@ -41,9 +44,11 @@ async def game_create(
 ) -> GameResponse:
     user = get_user_from_token(credentials.credentials)
     if user is None:
+        logger.info('rejected invalid token on game create')
         raise HTTPException(
             status_code=HTTPStatus.UNAUTHORIZED, detail='Not authenticated'
         )
+    extra = {'user_id': user, 'type': data.type}
     meta = (('authorization', credentials.credentials),)
     try:
         game = await game_stub.CreateGame(
@@ -53,14 +58,17 @@ async def game_create(
         )
     except aio.AioRpcError as exc:
         if exc.code() == StatusCode.UNAUTHENTICATED:
+            logger.info('unauthenticated on game create', extra=extra)
             raise HTTPException(
                 status_code=HTTPStatus.UNAUTHORIZED, detail='Not authenticated'
             )
+        logger.exception('failed to create game', extra=extra)
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail='Unexpected error',
         )
 
+    logger.info('game created', extra={**extra, 'game_id': game.id})
     return _game_proto_to_response(game)
 
 
@@ -72,9 +80,11 @@ async def game_detail(
 ) -> GameResponse:
     user = get_user_from_token(credentials.credentials)
     if user is None:
+        logger.info('rejected invalid token on game detail')
         raise HTTPException(
             status_code=HTTPStatus.UNAUTHORIZED, detail='Not authenticated'
         )
+    extra = {'user_id': user, 'game_id': game_id}
     meta = (('authorization', credentials.credentials),)
     try:
         game = await game_stub.GetGameById(
@@ -84,15 +94,18 @@ async def game_detail(
         )
     except aio.AioRpcError as exc:
         if exc.code() == StatusCode.UNAUTHENTICATED:
+            logger.info('unauthenticated on game detail', extra=extra)
             raise HTTPException(
                 status_code=HTTPStatus.UNAUTHORIZED, detail='Not authenticated'
             )
 
         if exc.code() == StatusCode.NOT_FOUND:
+            logger.info('game not found', extra=extra)
             raise HTTPException(
                 status_code=HTTPStatus.NOT_FOUND, detail='Not found'
             )
 
+        logger.exception('failed to fetch game', extra=extra)
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail='Failed to authorize you',
