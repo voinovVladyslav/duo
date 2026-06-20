@@ -32,9 +32,11 @@ async def lifespan(app: FastAPI):
         interceptors=[OTELClientInterceptor()],
     )
     app.state.cache = await redis.from_url(str(settings.redis_dsn))
+    logger.info('api started, channels and cache ready')
 
     yield
 
+    logger.info('api shutting down')
     await app.state.auth_channel.close()
     await app.state.game_channel.close()
     await app.state.cache.aclose()
