@@ -11,6 +11,8 @@ from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
 
+from common.logging.filters import KeywordLevelFilter
+
 
 def setup_metrics(
     service_name: str,
@@ -42,4 +44,9 @@ def setup_logs(
     )
     _logs.set_logger_provider(provider)
     handler = LoggingHandler()
+    handler.addFilter(
+        KeywordLevelFilter(
+            [{'level': 'WARNING', 'keywords': ['uvicorn']}]
+        )
+    )
     logging.getLogger().addHandler(handler)
