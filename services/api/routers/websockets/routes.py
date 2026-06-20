@@ -38,9 +38,9 @@ class GameLoggingAdapter(logging.LoggerAdapter[logging.Logger]):
         if self.extra is None:
             return msg, kwargs
 
-        game = self.extra.get('game', '-')
-        user = self.extra.get('user', '-')
-        return f'({game} : {user}) {msg}', kwargs
+        extra = cast(dict[str, Any], kwargs.setdefault('extra', {}))
+        extra.update(self.extra)
+        return msg, kwargs
 
 
 @dataclass
@@ -234,7 +234,7 @@ async def play_game(
 ) -> None:
     user: int | None = None
     logger = GameLoggingAdapter(logger=_logger)
-    logger.extra = {'game': game_id}
+    logger.extra = {'game_id': game_id}
 
     game_service: game_pb2_grpc.GameServiceAsyncStub = (  # pyright: ignore
         game_pb2_grpc.GameServiceStub(websocket.app.state.game_channel)
@@ -258,7 +258,7 @@ async def play_game(
         if not user:
             return
 
-        logger.extra['user'] = user
+        logger.extra['user_id'] = user
         logger.debug('user verified')
         await channel.subscribe(f'game:{game_id}:{user}')  # pyright: ignore
 
