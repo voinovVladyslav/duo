@@ -7,7 +7,7 @@ bind = '0.0.0.0:8000'
 # sched_getaffinity respects container CPU quotas;
 # multiprocessing.cpu_count() returns host CPUs
 workers = len(os.sched_getaffinity(0)) * 2 + 1
-worker_class = 'uvicorn.workers.UvicornWorker'
+worker_class = 'uvicorn_worker.UvicornWorker'
 
 timeout = 120
 graceful_timeout = 30

@@ -22,13 +22,13 @@ dependencies = [
     "redis>=7.4.0",
     "sentry-sdk>=2.60.0",
     "sqlmodel>=0.0.32",
-    "uvicorn>=0.40.0",
     "websockets>=16.0",
 ]
 
 
 [dependency-groups]
 dev = [
+    "uvicorn>=0.40.0",
     "ruff>=0.14.11",
     "basedpyright>=1.37.1",
     "pytest>=9.0.2",

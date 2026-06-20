@@ -352,7 +352,6 @@ dependencies = [
     { name = "redis" },
     { name = "sentry-sdk" },
     { name = "sqlmodel" },
-    { name = "uvicorn" },
     { name = "websockets" },
 ]
 
@@ -364,6 +363,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "uvicorn" },
 ]
 grpc = [
     { name = "grpcio-tools" },
@@ -393,7 +393,6 @@ requires-dist = [
     { name = "redis", specifier = ">=7.4.0" },
     { name = "sentry-sdk", specifier = ">=2.60.0" },
     { name = "sqlmodel", specifier = ">=0.0.32" },
-    { name = "uvicorn", specifier = ">=0.40.0" },
     { name = "websockets", specifier = ">=16.0" },
 ]
 
@@ -405,6 +404,7 @@ dev = [
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
     { name = "ruff", specifier = ">=0.14.11" },
+    { name = "uvicorn", specifier = ">=0.40.0" },
 ]
 grpc = [
     { name = "grpcio-tools", specifier = ">=1.76.0" },
