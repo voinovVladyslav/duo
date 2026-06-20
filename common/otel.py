@@ -43,7 +43,7 @@ def setup_logs(
         )
     )
     _logs.set_logger_provider(provider)
-    handler = LoggingHandler()
+    handler = LoggingHandler(level=logging.INFO)
     handler.addFilter(
         KeywordLevelFilter([{'level': 'WARNING', 'keywords': ['uvicorn']}])
     )
