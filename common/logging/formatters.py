@@ -47,4 +47,3 @@ class ColorfulFormatter(logging.Formatter):
             # restore original values after applying color
             record.levelname = levelname
             record.name = name
-
