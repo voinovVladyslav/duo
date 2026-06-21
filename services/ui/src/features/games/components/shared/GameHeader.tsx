@@ -1,12 +1,9 @@
 import clsx from "clsx"
-import type { ReactNode } from "react"
 
 interface Props {
     opponentName: string
     yourTurn: boolean
     isOver: boolean
-    youSlot?: ReactNode
-    opponentSlot?: ReactNode
 }
 
 const styles = {
@@ -15,13 +12,7 @@ const styles = {
     inactive: "bg-muted text-muted-foreground",
 }
 
-export function GameHeader({
-    opponentName,
-    yourTurn,
-    isOver,
-    youSlot,
-    opponentSlot,
-}: Props) {
+export function GameHeader({ opponentName, yourTurn, isOver }: Props) {
     const youActive = !isOver && yourTurn
     const opponentActive = !isOver && !yourTurn
 
@@ -35,7 +26,6 @@ export function GameHeader({
                     )}
                 >
                     <span>You</span>
-                    {youSlot}
                 </span>
             </div>
             <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
@@ -48,7 +38,6 @@ export function GameHeader({
                         opponentActive ? styles.active : styles.inactive
                     )}
                 >
-                    {opponentSlot}
                     <span className="truncate">{opponentName}</span>
                 </span>
             </div>

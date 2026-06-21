@@ -5,9 +5,7 @@ import { TicTacToeStateSchema } from "@/features/games/types/tic-tac-toe"
 import { GameHeader } from "../shared/GameHeader"
 import { GameOverDialog } from "../shared/GameOverDialog"
 import { GameBoard } from "./GameBoard"
-import { TicTacToeCell } from "./TicTacToeCell"
 import { getDialogTitle } from "../shared/gameOutcome"
-import { opponentSymbol } from "./utils"
 
 interface Props {
     gameState: any
@@ -42,10 +40,6 @@ export function TicTacToe({ gameState, sendMoveHandler, opponent }: Props) {
                 opponentName={opponent ? opponent.email : "Opponent"}
                 yourTurn={state.your_turn}
                 isOver={isOver}
-                youSlot={<TicTacToeCell value={state.your_symbol} />}
-                opponentSlot={
-                    <TicTacToeCell value={opponentSymbol(state.your_symbol)} />
-                }
             />
 
             <GameBoard
