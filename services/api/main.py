@@ -6,8 +6,17 @@ import redis.asyncio as redis
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from grpc import aio
+from opentelemetry.instrumentation.fastapi import (  # pyright: ignore[reportMissingTypeStubs]
+    FastAPIInstrumentor,
+)
+from opentelemetry.instrumentation.grpc import (  # pyright: ignore[reportMissingTypeStubs]
+    GrpcAioInstrumentorClient,
+)
+from opentelemetry.instrumentation.logging import (  # pyright: ignore[reportMissingTypeStubs]
+    LoggingInstrumentor,
+)
 
-from common.otel import setup_logs
+from common.otel import setup_logs, setup_tracing
 from services.api.config import settings
 from services.api.config.sentry import init_sentry
 from services.api.middleware.otel import OTELClientInterceptor, OTELMiddleware
@@ -25,6 +34,10 @@ logger = logging.getLogger('duo.api.main')
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logs(settings.service_name, settings.otel_url, settings.otel_interval)
+    setup_tracing(settings.service_name, settings.otel_url)
+    FastAPIInstrumentor.instrument_app(app)
+    GrpcAioInstrumentorClient().instrument()
+    LoggingInstrumentor().instrument(set_logging_format=True)
     app.state.auth_channel = aio.insecure_channel(
         str(settings.auth_service_url),
         interceptors=[OTELClientInterceptor()],

@@ -1,5 +1,8 @@
 from contextlib import asynccontextmanager
 
+from opentelemetry.instrumentation.sqlalchemy import (  # pyright: ignore[reportMissingTypeStubs]
+    SQLAlchemyInstrumentor,
+)
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -10,6 +13,7 @@ _engine = create_async_engine(
     pool_size=settings.db_pool_size,
     max_overflow=settings.db_max_overflow,
 )
+SQLAlchemyInstrumentor().instrument(engine=_engine.sync_engine)
 
 
 def get_async_engine() -> AsyncEngine:

@@ -3,8 +3,14 @@ import logging
 import signal
 
 from grpc import aio
+from opentelemetry.instrumentation.grpc import (  # pyright: ignore[reportMissingTypeStubs]
+    GrpcAioInstrumentorServer,
+)
+from opentelemetry.instrumentation.logging import (  # pyright: ignore[reportMissingTypeStubs]
+    LoggingInstrumentor,
+)
 
-from common.otel import setup_logs
+from common.otel import setup_logs, setup_tracing
 from generated import game_pb2_grpc
 from services.game.config import settings
 from services.game.config.sentry import init_sentry
@@ -20,6 +26,9 @@ if settings.sentry_dsn:
 
 async def serve() -> None:
     setup_logs(settings.service_name, settings.otel_url, settings.otel_interval)
+    setup_tracing(settings.service_name, settings.otel_url)
+    GrpcAioInstrumentorServer().instrument()
+    LoggingInstrumentor().instrument(set_logging_format=True)
     interceptors = (
         OTELInterceptor(),
         AuthInterceptor(),

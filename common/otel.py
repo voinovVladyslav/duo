@@ -1,15 +1,20 @@
 import logging
 
-from opentelemetry import _logs, metrics
+from opentelemetry import _logs, metrics, trace
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
     OTLPMetricExporter,
+)
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+    OTLPSpanExporter,
 )
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 from common.logging.filters import KeywordLevelFilter
 
@@ -27,6 +32,16 @@ def setup_metrics(
     provider = MeterProvider(metric_readers=[reader])
     metrics.set_meter_provider(provider)
     return metrics.get_meter(service_name)
+
+
+def setup_tracing(service_name: str, endpoint: str) -> trace.Tracer:
+    resource = Resource.create({'service.name': service_name})
+    provider = TracerProvider(resource=resource)
+    provider.add_span_processor(
+        BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint, insecure=True))
+    )
+    trace.set_tracer_provider(provider)
+    return trace.get_tracer(service_name)
 
 
 def setup_logs(
