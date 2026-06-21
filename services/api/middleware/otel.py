@@ -185,9 +185,12 @@ class OTELClientInterceptor(UnaryUnaryClientInterceptor):
         code = 'OK'
         try:
             call = await continuation(client_call_details, request)
-            result = await call
+            await call
             code = (await call.code()).name
-            return result
+            # return the call (not the response) so outer interceptors
+            # (e.g. OTEL tracing) can attach done-callbacks to a real
+            # UnaryUnaryCall instead of a UnaryUnaryCallResponse wrapper
+            return call
         except grpc.aio.AioRpcError as exc:
             code = exc.code().name
             raise
