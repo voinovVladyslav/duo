@@ -52,17 +52,6 @@ class AuthInterceptor(grpc.aio.ServerInterceptor):
         if not token:
             return handler
 
-        try:
-            user = await get_user_from_token(token=token)
-        except (InvalidTokenError, ExpiredTokenError) as exc:
-            logger.info(
-                'token rejected',
-                extra={
-                    'reason': type(exc).__name__,
-                },
-            )
-            user = None
-
         # Wraps only unary_unary as it's only used methods
         if handler.unary_unary is not None:
 
@@ -70,6 +59,14 @@ class AuthInterceptor(grpc.aio.ServerInterceptor):
                 request: Any, context: grpc.ServicerContext
             ):
                 assert handler.unary_unary is not None
+                try:
+                    user = await get_user_from_token(token=token)
+                except (InvalidTokenError, ExpiredTokenError) as exc:
+                    logger.info(
+                        'token rejected',
+                        extra={'reason': type(exc).__name__},
+                    )
+                    user = None
                 with request_user.set(user):
                     return await handler.unary_unary(request, context)
 
