@@ -42,6 +42,15 @@ services:
     ports:
       - "3100:3100"
 
+  tempo:
+    image: grafana/tempo:2.6.0
+    command: ["-config.file=/etc/tempo/config.yml"]
+    volumes:
+      - ./tempo.yml:/etc/tempo/config.yml
+      - tempo-data:/var/tempo
+    ports:
+      - "3200:3200" 
+
 volumes:
   prometheus-data:
     name: duo-prometheus-data
@@ -49,3 +58,5 @@ volumes:
     name: duo-grafana-data
   loki-data:
     name: duo-loki-data
+  tempo-data:
+    name: duo-tempo-data
